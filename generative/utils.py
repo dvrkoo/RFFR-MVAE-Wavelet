@@ -84,28 +84,42 @@ def accuracy(output, target, topk=(1,)):
 
 
 def mkdirs():
-    if not os.path.exists(config.checkpoint_path):
-        os.makedirs(config.checkpoint_path)
-    if not os.path.exists(config.best_model_path):
-        os.makedirs(config.best_model_path)
-    if not os.path.exists(config.logs):
-        os.mkdir(config.logs)
+    # Support both old (config.checkpoint_path) and new (config.paths.checkpoint) formats
+    checkpoint_path = getattr(config, 'checkpoint_path', None) or getattr(config.paths, 'checkpoint', None)
+    best_model_path = getattr(config, 'best_model_path', None) or getattr(config.paths, 'best_model', None)
+    logs_path = getattr(config, 'logs', None) or getattr(config.paths, 'logs', None)
+    
+    if checkpoint_path and not os.path.exists(checkpoint_path):
+        os.makedirs(checkpoint_path)
+        print(f"[Setup] Created checkpoint directory: {checkpoint_path}")
+    if best_model_path and not os.path.exists(best_model_path):
+        os.makedirs(best_model_path)
+        print(f"[Setup] Created best model directory: {best_model_path}")
+    if logs_path and not os.path.exists(logs_path):
+        os.makedirs(logs_path)
+        print(f"[Setup] Created logs directory: {logs_path}")
 
 
 def test_checkpoint_save():
     print("\n[Pre-flight] Testing checkpoint save capability...")
 
     try:
+        # Support both old (config.checkpoint_path) and new (config.paths.checkpoint) formats
+        checkpoint_path = getattr(config, 'checkpoint_path', None) or getattr(config.paths, 'checkpoint', None)
+        
+        if checkpoint_path is None:
+            raise ValueError("Checkpoint path not found in config. Check config.paths.checkpoint or config.checkpoint_path")
+        
         test_state = {
             "epoch": 0,
             "test": "checkpoint_write_test",
             "data": torch.randn(100, 100),
         }
 
-        test_filepath = config.checkpoint_path + "_test_checkpoint.pth.tar"
+        test_filepath = checkpoint_path + "_test_checkpoint.pth.tar"
         temp_filepath = test_filepath + ".tmp"
 
-        stat = shutil.disk_usage(config.checkpoint_path)
+        stat = shutil.disk_usage(checkpoint_path)
         free_gb = stat.free / (1024**3)
 
         if stat.free < 5 * 1024**3:
@@ -215,10 +229,17 @@ def save_checkpoint(
     if model_config is not None:
         state["config"] = model_config
 
-    filepath = config.checkpoint_path + filename
+    # Support both old (config.checkpoint_path) and new (config.paths.checkpoint) formats
+    checkpoint_base = getattr(config, 'checkpoint_path', None) or getattr(config.paths, 'checkpoint', None)
+    best_model_base = getattr(config, 'best_model_path', None) or getattr(config.paths, 'best_model', None)
+    
+    if checkpoint_base is None:
+        raise ValueError("Checkpoint path not found in config. Check config.paths.checkpoint or config.checkpoint_path")
+    
+    filepath = checkpoint_base + filename
     best_filepath = (
-        config.best_model_path
-        + "best_loss_"
+        best_model_base
+        + "/best_loss_"
         + str(round(current_loss, 5))
         + "_"
         + str(epoch)
