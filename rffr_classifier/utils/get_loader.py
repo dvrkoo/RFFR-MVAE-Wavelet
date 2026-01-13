@@ -1,0 +1,288 @@
+from configs.config import config
+import json
+import random
+from torch.utils.data import DataLoader
+from utils.dataset import Deepfake_Dataset
+
+
+def get_dataset():
+    print("\nLoad Train Data")
+
+    random.seed(config.seed)
+
+    train_real_dict = []
+    for real_dataset in config.real_label_path:
+        with open(config.dataset_base + real_dataset) as f:
+            train_real_dict += json.load(f)
+    print("Train data frames (real): ", len(train_real_dict))
+
+    train_fake_dict = []
+
+    if config.use_mixed_forgeries:
+        print("\n*** MIXED FORGERY TRAINING MODE ENABLED ***")
+        print(f"Mixing forgeries: {config.forgery_mix_types}")
+        print(f"Mixing ratios: {config.forgery_mix_ratios}")
+
+        if abs(sum(config.forgery_mix_ratios) - 1.0) > 0.001:
+            raise ValueError(
+                f"Forgery mix ratios must sum to 1.0, got {sum(config.forgery_mix_ratios)}"
+            )
+
+        if len(config.forgery_mix_types) != len(config.forgery_mix_ratios):
+            raise ValueError(
+                f"Number of forgery types ({len(config.forgery_mix_types)}) must match number of ratios ({len(config.forgery_mix_ratios)})"
+            )
+
+        all_forgery_samples = []
+        for forgery_type in config.forgery_mix_types:
+            label_file = (
+                f"{config.forgery_mix_base_dir}/train/{forgery_type}_train_label.json"
+            )
+            full_path = config.dataset_base + label_file
+            try:
+                with open(full_path) as f:
+                    forgery_samples = json.load(f)
+                    all_forgery_samples.append(forgery_samples)
+                    print(
+                        f"  Loaded {forgery_type}: {len(forgery_samples)} available samples"
+                    )
+            except FileNotFoundError:
+                raise FileNotFoundError(f"Could not find label file: {full_path}")
+
+        if config.total_fake_samples is not None:
+            total_target = config.total_fake_samples
+            print(f"\nTarget total fake samples: {total_target}")
+        else:
+            min_available = min(len(samples) for samples in all_forgery_samples)
+            total_target = int(min_available * len(config.forgery_mix_types))
+            print(
+                f"\nAuto-calculated total fake samples: {total_target} (based on smallest forgery set)"
+            )
+
+        for i, (forgery_type, ratio, samples) in enumerate(
+            zip(
+                config.forgery_mix_types, config.forgery_mix_ratios, all_forgery_samples
+            )
+        ):
+            n_samples = int(total_target * ratio)
+            n_samples = min(n_samples, len(samples))
+            selected = random.sample(samples, n_samples)
+            train_fake_dict += selected
+            print(
+                f"  {forgery_type}: sampled {len(selected)} samples ({ratio*100:.1f}%)"
+            )
+
+        random.shuffle(train_fake_dict)
+        print(f"\nTotal mixed fake samples: {len(train_fake_dict)}")
+
+    else:
+        for fake_dataset in config.fake_label_path:
+            with open(config.dataset_base + fake_dataset) as f:
+                train_fake_dict += json.load(f)
+        print("Train data frames (fake): ", len(train_fake_dict))
+    # Apply video-level subsetting (if enabled) - affects FAKE videos only
+    if config.use_video_subset and config.video_subset_count is not None:
+        if config.video_subset_count < 1:
+            raise ValueError(
+                f"video_subset_count must be positive, got {config.video_subset_count}"
+            )
+
+        print("\n*** VIDEO SUBSET MODE ENABLED ***")
+        print(f"Selecting {config.video_subset_count} fake videos with ALL frames")
+        print(f"Selection strategy: SEQUENTIAL (starting from index {config.video_subset_start_idx})")
+        
+        # Group fake frames by video ID
+        video_map = {}  # video_id -> list of frame entries
+        for entry in train_fake_dict:
+            # Extract video ID from path (e.g., "000_003" from "...images/000_003/0042_crop.png")
+            video_id = entry["path"].split("/")[-2]
+            if video_id not in video_map:
+                video_map[video_id] = []
+            video_map[video_id].append(entry)
+        
+        # Get sorted list of all available videos
+        all_videos = sorted(video_map.keys())
+        print(f"Total available fake videos: {len(all_videos)}")
+        
+        # Sequential selection from start_idx
+        end_idx = config.video_subset_start_idx + config.video_subset_count
+        if end_idx > len(all_videos):
+            raise ValueError(
+                f"Requested videos {config.video_subset_start_idx}-{end_idx-1} but only {len(all_videos)} available"
+            )
+        selected_videos = all_videos[config.video_subset_start_idx:end_idx]
+        
+        # Rebuild train_fake_dict with ALL frames from selected videos
+        original_frame_count = len(train_fake_dict)
+        train_fake_dict = []
+        for video_id in selected_videos:
+            train_fake_dict.extend(video_map[video_id])
+        
+        # Report statistics
+        avg_frames = len(train_fake_dict) / len(selected_videos)
+        print("\nVideo subset results:")
+        print(f"  Selected videos: {len(selected_videos)}/{len(all_videos)}")
+        print(f"  Video range: {selected_videos[0]} to {selected_videos[-1]}")
+        print(f"  Fake frames: {original_frame_count} → {len(train_fake_dict)}")
+        print(f"  Average frames per video: {avg_frames:.1f}")
+        print(f"  Real frames: {len(train_real_dict)} (unchanged)")
+        print(f"  Fake:Real ratio: 1:{len(train_real_dict)/len(train_fake_dict):.2f}")
+
+
+    # Apply max_fake_frames limiting (if enabled)
+    if config.max_fake_frames is not None:
+        if config.use_video_subset:
+            print("\n*** WARNING: Both max_fake_frames and use_video_subset are enabled ***")
+            print("use_video_subset takes precedence - ignoring max_fake_frames")
+        elif config.max_fake_frames < 1:
+            raise ValueError(
+                f"max_fake_frames must be positive, got {config.max_fake_frames}"
+            )
+
+        original_count = len(train_fake_dict)
+        if config.max_fake_frames < original_count:
+            print(f"\n*** FAKE FRAME LIMITING ENABLED ***")
+            print(f"Limiting fake data to first {config.max_fake_frames} frames")
+
+            # Take first N frames (corresponds to first N videos in fake1 protocol)
+            train_fake_dict = train_fake_dict[: config.max_fake_frames]
+
+            print(
+                f"Fake frames: {original_count} → {len(train_fake_dict)} (videos 000-{len(train_fake_dict)-1:03d})"
+            )
+            print(f"Real frames: {len(train_real_dict)} (unchanged)")
+            if len(train_fake_dict) > 0:
+                print(
+                    f"Fake:Real ratio: 1:{len(train_real_dict)/len(train_fake_dict):.1f}"
+                )
+        else:
+            print(
+                f"\nNote: max_fake_frames ({config.max_fake_frames}) >= available frames ({original_count}), using all frames"
+            )
+
+    if config.anomaly_detection_mode:
+        print("\n*** SEMI-SUPERVISED ANOMALY DETECTION MODE ENABLED ***")
+        print(
+            "Training with contrastive learning: pull real samples to center, push fake samples away"
+        )
+        print(
+            f"Using {len(train_real_dict)} real + {len(train_fake_dict)} fake samples"
+        )
+
+    print("\nLoad Validation Data - Using Proper Val Split (720-859)")
+    val_dataloader = []
+
+    # Load proper validation data (videos 720-859)
+    val_dict = []
+    for val_dataset in config.val_label_path:
+        with open(config.dataset_base + val_dataset) as f:
+            val_dict += json.load(f)
+
+    print(f"Validation data total: {len(val_dict)} frames")
+
+    # Count real vs fake in validation
+    val_real_count = sum(1 for item in val_dict if item["label"] == 0)
+    val_fake_count = sum(1 for item in val_dict if item["label"] == 1)
+    print(
+        f"  -> Validation distribution: {val_real_count} real (0), {val_fake_count} fake (1)"
+    )
+
+    # Create mixed validation dataloader with balanced sampling
+    random.shuffle(val_dict)
+
+    # Limit mixed validation to 2000 samples (1000 real + 1000 fake) for speed
+    val_real = [item for item in val_dict if item["label"] == 0]
+    val_fake = [item for item in val_dict if item["label"] == 1]
+
+    # Sample up to 1000 of each class
+    val_real_subset = random.sample(val_real, min(1000, len(val_real)))
+    val_fake_subset = random.sample(val_fake, min(1000, len(val_fake)))
+
+    # Combine and shuffle
+    val_mixed_subset = val_real_subset + val_fake_subset
+    random.shuffle(val_mixed_subset)
+
+    print(
+        f"Mixed validation subset: {len(val_real_subset)} real + {len(val_fake_subset)} fake = {len(val_mixed_subset)} total"
+    )
+
+    mixed_val_dataloader = DataLoader(
+        Deepfake_Dataset(val_mixed_subset, train=False),
+        batch_size=config.batch_size,
+        shuffle=False,
+        num_workers=config.num_workers,
+        pin_memory=config.pin_memory,
+    )
+    val_dataloader.append(mixed_val_dataloader)
+
+    # Create individual validation sets for each manipulation type
+    # Each needs both real and fake data for proper AUC calculation
+    dataset_names = ["Real", "DF", "F2F", "FSW", "NT"]
+
+    # Get real validation data for combining with each fake dataset
+    real_val_path = config.val_label_path[0]  # First path is real_val_label.json
+    with open(config.dataset_base + real_val_path) as f:
+        real_val_data = json.load(f)
+
+    # Sample real data once to use with each fake dataset
+    real_val_subset = random.sample(
+        real_val_data, min(500, len(real_val_data))
+    )  # 500 real per dataset
+
+    for i, path in enumerate(config.val_label_path[1:], 1):  # Skip first (real) path
+        val_json = open(config.dataset_base + path)
+        fake_val_data = json.load(val_json)
+
+        # Sample fake data for this specific forgery type
+        fake_val_subset = random.sample(
+            fake_val_data, min(500, len(fake_val_data))
+        )  # 500 fake per dataset
+
+        # Combine real + fake for balanced evaluation
+        combined_val_data = real_val_subset + fake_val_subset
+        random.shuffle(combined_val_data)
+
+        dataset_name = dataset_names[i] if i < len(dataset_names) else f"Dataset_{i+1}"
+        real_count = sum(1 for item in combined_val_data if item["label"] == 0)
+        fake_count = sum(1 for item in combined_val_data if item["label"] == 1)
+        print(
+            f"Validation {dataset_name}: {real_count} real + {fake_count} fake = {len(combined_val_data)} total"
+        )
+
+        val_dataloader.append(
+            DataLoader(
+                Deepfake_Dataset(combined_val_data, train=False),
+                batch_size=config.batch_size,
+                shuffle=False,
+                num_workers=config.num_workers,
+                pin_memory=config.pin_memory,
+            )
+        )
+
+    # Verify training data balance
+    train_real_labels = [item["label"] for item in train_real_dict]
+    train_fake_labels = [item["label"] for item in train_fake_dict]
+    print(f"\nTraining data verification:")
+    print(
+        f"  Real training set labels: {set(train_real_labels)} (count: {len(train_real_dict)})"
+    )
+    print(
+        f"  Fake training set labels: {set(train_fake_labels)} (count: {len(train_fake_dict)})"
+    )
+
+    train_real_dataloader = DataLoader(
+        Deepfake_Dataset(train_real_dict, train=True),
+        batch_size=config.batch_size,
+        shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=config.pin_memory,
+    )
+    train_fake_dataloader = DataLoader(
+        Deepfake_Dataset(train_fake_dict, train=True),
+        batch_size=config.batch_size,
+        shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=config.pin_memory,
+    )
+
+    return train_real_dataloader, train_fake_dataloader, val_dataloader

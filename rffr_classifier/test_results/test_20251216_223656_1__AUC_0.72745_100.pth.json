@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-12-16T22:36:56.555006",
+  "checkpoint": {
+    "path": "/seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae_vae/3branch_wavelet_residual_DF_All_Fake5_2025-12-13-09:58:33_98c107/best_model/2025-12-13-09:58:33_98c107/1__AUC_0.72745_100.pth.tar",
+    "epoch": 100,
+    "validation_aucs": [
+      0.7274489795918367,
+      0.9895408163265307,
+      0.7506122448979592,
+      0.4389285714285715,
+      0.7305102040816327
+    ],
+    "best_aucs": [
+      0.7274489795918367,
+      0.9921428571428572,
+      0.7506122448979592,
+      0.4704591836734694
+    ]
+  },
+  "test_config": {
+    "samples": 14000,
+    "batch_size": 64,
+    "datasets": [
+      "DF",
+      "F2F",
+      "FSW",
+      "NT",
+      "Mixed",
+      "FS"
+    ],
+    "sampling_method": "random_frame",
+    "frames_per_video": null,
+    "uniform_frames": null,
+    "gpu": "0",
+    "checkpoint_strategy": "highest_auc"
+  },
+  "results": {
+    "DF": 0.9992808826530613,
+    "F2F": 0.7665280688775511,
+    "FSW": 0.3988662219387755,
+    "NT": 0.759965237244898,
+    "FS": 0.7161028673469387,
+    "Mixed": 0.7319657653061225
+  },
+  "summary": {
+    "average_auc": 0.7311601026785715,
+    "datasets_tested": [
+      "DF",
+      "F2F",
+      "FSW",
+      "NT",
+      "FS",
+      "Mixed"
+    ],
+    "num_datasets": 6
+  }
+}

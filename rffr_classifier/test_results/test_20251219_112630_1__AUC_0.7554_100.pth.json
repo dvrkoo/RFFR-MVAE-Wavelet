@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-12-19T11:26:30.548511",
+  "checkpoint": {
+    "path": "/seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_360f_2025-12-15-12:31:43_84a3ef/best_model/2025-12-15-12:31:43_84a3ef/1__AUC_0.7554_100.pth.tar",
+    "epoch": 100,
+    "validation_aucs": [
+      0.7553954081632654,
+      0.7911224489795918,
+      0.9819897959183674,
+      0.629030612244898,
+      0.6194387755102041
+    ],
+    "best_aucs": [
+      0.7553954081632654,
+      0.7911224489795918,
+      0.9819897959183674,
+      0.654234693877551
+    ]
+  },
+  "test_config": {
+    "samples": 14000,
+    "batch_size": 64,
+    "datasets": [
+      "DFD"
+    ],
+    "sampling_method": "random_frame",
+    "frames_per_video": null,
+    "uniform_frames": null,
+    "gpu": "1",
+    "checkpoint_strategy": "highest_auc"
+  },
+  "results": {
+    "DFD": 0.9397043516266124
+  },
+  "summary": {
+    "average_auc": 0.9397043516266124,
+    "datasets_tested": [
+      "DFD"
+    ],
+    "num_datasets": 1
+  }
+}

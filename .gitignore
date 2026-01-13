@@ -1,0 +1,97 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Training outputs
+rffr_classifier/checkpoint/
+rffr_generative/checkpoint/
+checkpoints/
+rffr_generative/logs/
+rffr_classifier/logs/
+logs/
+*.log
+*.pth
+*.pth.tar
+*.ckpt
+
+# WandB
+wandb/
+rffr_classifier/wandb/
+rffr_generative/wandb/
+*.wandb
+
+# Tensorboard
+runs/
+rffr_generative/runs/
+
+# Data
+data/
+data_label/
+
+# Pretrained models
+pretrain/
+
+# Output directories
+output_reconstruction/
+output_reconstruction/*
+output_reconstruction_FF_FN/
+output_reconstruction_FF_FN/*
+
+# History/backups
+history/
+*.bak
+*.backup
+
+# Markdown files (summaries, notes, docs) - EXCEPT README
+*.md
+!README.md
+
+# OpenCode artifacts
+.opencode/
+.aider*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/

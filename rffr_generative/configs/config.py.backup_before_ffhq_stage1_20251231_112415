@@ -1,0 +1,83 @@
+class DefaultConfigs(object):
+    # actual parameters
+    seed = 912
+    comment = "RFFR: Generative modeling."
+    weight_decay = 0.05
+    beta1 = 0.9  # 0.9 for MAE
+    beta2 = 0.95  # 0.95 for MAE
+    model = "mae"
+
+    generator_type = "mae_vae"
+
+    vae_architecture = "resnet"
+    vae_base_channels = 64
+    vae_latent_dim = 256
+    vae_beta = 0.0001
+    vae_kl_warmup_steps = 5000
+
+    wavelet_vae_wavelet_type = "db4"
+
+    multibranch_wavelet_ll_latent_dim = 128
+    multibranch_wavelet_high_freq_latent_dim = 384
+    multibranch_wavelet_ll_base_channels = 32
+    multibranch_wavelet_high_freq_base_channels = 48
+    multibranch_wavelet_high_freq_loss_weight = 2.0
+
+    freeze_mae_encoder = False
+    # bs ultron 240
+    batch_size = 180  # batch size: n * 2
+    lr = 1.5e-4 * batch_size / 256
+    use_lr_scheduling = True
+    lr_warmup = 5000
+    max_iter = 200000  # To be modified according to data size
+    gpus = "0,1"
+
+    iter_per_epoch = 500
+    dataset_name = ["Faceforensics"]  # dataset need to be tested
+
+    # paths information
+    # my_pretrained = "/seidenas/users/nmarini/generative_checkpoint/mae/FF_FN_best/best_loss_0.0032_200.pth.tar"
+    my_pretrained = "/seidenas/users/nmarini/generative_checkpoint/mae_vae/best/best_loss_0.01895_25.pth.tar"
+    in_pretrained = None
+    checkpoint_path = (
+        "/seidenas/users/nmarini/generative_checkpoint/"
+        + generator_type
+        + "/current_model/"
+    )
+    best_model_path = (
+        "/seidenas/users/nmarini/generative_checkpoint/" + generator_type + "/best/"
+    )
+    enable_tensorboard = True
+    logs = "./logs/"
+
+    lq = False
+    aug = False
+
+    use_wavelet_reconstruction = False
+    wavelet_type = "db4"
+    wavelet_levels = 1
+    wavelet_high_freq_weight = 2.0
+
+    use_forgerynet = True
+    forgerynet_num_videos = 150000
+    forgerynet_frames_per_video = 1
+    forgerynet_rotate_videos = False
+    forgerynet_categories = ["16", "17", "18", "19"]
+
+    real_label_path = "../data_label/ff_270_fake100/train/real_train_label.json"
+    forgerynet_index_path = "../data_label/FN/train/forgerynet_video_index.json"
+
+    save_code = [
+        "configs/config.py",
+        "train.py",
+        "models/model_mae.py",
+        "models/model_vae.py",
+        "models/model_wavelet_vae.py",
+        "models/model_multibranch_wavelet_vae.py",
+        "dataset.py",
+        "utils.py",
+        "wavelet_utils.py",
+    ]
+
+
+config = DefaultConfigs()

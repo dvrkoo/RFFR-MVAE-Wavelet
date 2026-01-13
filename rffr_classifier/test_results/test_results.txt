@@ -1,0 +1,613 @@
+
+============================================================
+Test Results - 2025-11-29 18:43:25
+============================================================
+
+Checkpoint: 1__AUC_0.76036_200.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_DF_All_Fake100_2025-11-28-16:15:13_3916dc/best_model/2025-11-28-16:15:13_3916dc/1__AUC_0.76036_200.pth.tar
+Epoch: 200
+
+Test AUC Scores:
+  DF        : 0.9994
+  F2F       : 0.7848
+  FSW       : 0.4423
+  NT        : 0.7849
+  FS        : 0.7336
+  Mixed     : 0.7536
+
+  Average (excluding FS)   : 0.7529
+============================================================
+
+============================================================
+Test Results - 2025-11-30 20:06:07
+============================================================
+
+Checkpoint: 2__AUC_0.99423_170.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_DF_All_Fake100_2025-11-28-13:35:28_b567cc/best_model/2025-11-28-13:35:28_b567cc/2__AUC_0.99423_170.pth.tar
+Epoch: 170
+
+Test AUC Scores:
+  DF        : 0.9993
+  F2F       : 0.7267
+  FSW       : 0.4251
+  NT        : 0.7383
+  FS        : 0.7392
+  Mixed     : 0.7237
+
+  Average (excluding FS)   : 0.7224
+============================================================
+
+============================================================
+Test Results - 2025-12-15 14:06:02
+============================================================
+
+Checkpoint: 1__AUC_0.75774_220.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_Fake3_2025-12-12-10:10:38_4f1af7/best_model/2025-12-12-10:10:38_4f1af7/1__AUC_0.75774_220.pth.tar
+Epoch: 220
+
+Test AUC Scores:
+  DF        : 0.9993
+  F2F       : 0.7714
+  NT        : 0.7641
+  FS        : 0.7386
+  Mixed     : 0.7506
+
+  Average (excluding FS)   : 0.8449
+============================================================
+
+============================================================
+Test Results - 2025-12-15 14:36:23
+============================================================
+
+Checkpoint: 1__AUC_0.73417_90.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_Fake1_2025-12-12-10:10:55_fd4c21/best_model/2025-12-12-10:10:55_fd4c21/1__AUC_0.73417_90.pth.tar
+Epoch: 90
+
+Test AUC Scores:
+  DF        : 0.9957
+  F2F       : 0.7920
+  NT        : 0.7511
+  FS        : 0.7827
+  Mixed     : 0.7302
+
+  Average (excluding FS)   : 0.8462
+============================================================
+
+============================================================
+Test Results - 2025-12-15 17:59:49
+============================================================
+
+Checkpoint: 1__AUC_0.76009_210.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_2025-12-12-15:56:34_6c93e6/best_model/2025-12-12-15:56:34_6c93e6/1__AUC_0.76009_210.pth.tar
+Epoch: 210
+
+Test AUC Scores:
+  DF        : 0.9990
+  F2F       : 0.7916
+  NT        : 0.7959
+  FS        : 0.7811
+  Mixed     : 0.7468
+
+  Average (excluding FS)   : 0.8622
+============================================================
+
+============================================================
+Test Results - 2025-12-15 18:23:44
+============================================================
+
+Checkpoint: 1__AUC_0.72774_90.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_Fake5_2025-12-11-18:00:15_9e901a/best_model/2025-12-11-18:00:15_9e901a/1__AUC_0.72774_90.pth.tar
+Epoch: 90
+
+Test AUC Scores:
+  DF        : 0.9995
+  F2F       : 0.7394
+  NT        : 0.7732
+  FS        : 0.7553
+  Mixed     : 0.7198
+
+  Average (excluding FS)   : 0.8374
+============================================================
+
+============================================================
+Test Results - 2025-12-15 21:34:58
+============================================================
+
+Checkpoint: 1__AUC_0.74027_185.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_Fake100_2025-12-14-12:17:35_a29a1a/best_model/2025-12-14-12:17:35_a29a1a/1__AUC_0.74027_185.pth.tar
+Epoch: 185
+
+Test AUC Scores:
+  DF        : 0.9995
+  F2F       : 0.7605
+  NT        : 0.7709
+  FS        : 0.7143
+  Mixed     : 0.7322
+
+  Average (excluding FS)   : 0.8436
+============================================================
+
+============================================================
+Test Results - 2025-12-16 17:50:18
+============================================================
+
+Checkpoint: 1__AUC_0.72487_140.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae_vae/3branch_wavelet_residual_DF_All_Fake1_2025-12-13-10:54:25_5787e5/best_model/2025-12-13-10:54:25_5787e5/1__AUC_0.72487_140.pth.tar
+Epoch: 140
+
+Test AUC Scores:
+  DF        : 0.9974
+  F2F       : 0.7899
+  FSW       : 0.3727
+  NT        : 0.7395
+  FS        : 0.8280
+  Mixed     : 0.7260
+
+  Average (excluding FS)   : 0.7249
+============================================================
+
+============================================================
+Test Results - 2025-12-16 17:56:29
+============================================================
+
+Checkpoint: 1__AUC_0.74566_120.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae_vae/3branch_wavelet_residual_DF_All_Fake3_2025-12-13-09:58:52_cc20fb/best_model/2025-12-13-09:58:52_cc20fb/1__AUC_0.74566_120.pth.tar
+Epoch: 120
+
+Test AUC Scores:
+  DF        : 0.9976
+  F2F       : 0.7139
+  FSW       : 0.4596
+  NT        : 0.7153
+  FS        : 0.7085
+  Mixed     : 0.7220
+
+  Average (excluding FS)   : 0.7216
+============================================================
+
+============================================================
+Test Results - 2025-12-16 22:36:56
+============================================================
+
+Checkpoint: 1__AUC_0.72745_100.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae_vae/3branch_wavelet_residual_DF_All_Fake5_2025-12-13-09:58:33_98c107/best_model/2025-12-13-09:58:33_98c107/1__AUC_0.72745_100.pth.tar
+Epoch: 100
+
+Test AUC Scores:
+  DF        : 0.9993
+  F2F       : 0.7665
+  FSW       : 0.3989
+  NT        : 0.7600
+  FS        : 0.7161
+  Mixed     : 0.7320
+
+  Average (excluding FS)   : 0.7312
+============================================================
+
+============================================================
+Test Results - 2025-12-16 23:02:33
+============================================================
+
+Checkpoint: 1__AUC_0.71958_80.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae_vae/3branch_wavelet_residual_DF_All_2025-12-12-17:56:23_6fcd51/best_model/2025-12-12-17:56:23_6fcd51/1__AUC_0.71958_80.pth.tar
+Epoch: 80
+
+Test AUC Scores:
+  DF        : 0.9990
+  F2F       : 0.7967
+  FSW       : 0.3588
+  NT        : 0.7792
+  FS        : 0.7385
+  Mixed     : 0.7342
+
+  Average (excluding FS)   : 0.7334
+============================================================
+
+============================================================
+Test Results - 2025-12-17 03:16:22
+============================================================
+
+Checkpoint: 1__AUC_0.74949_110.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae_vae/3branch_wavelet_residual_DF_All_Fake100_2025-12-14-12:16:45_ef95f8/best_model/2025-12-14-12:16:45_ef95f8/1__AUC_0.74949_110.pth.tar
+Epoch: 110
+
+Test AUC Scores:
+  DF        : 0.9987
+  F2F       : 0.7842
+  FSW       : 0.3684
+  NT        : 0.8015
+  FS        : 0.7620
+  Mixed     : 0.7388
+
+  Average (excluding FS)   : 0.7382
+============================================================
+
+============================================================
+Test Results - 2025-12-18 09:56:04
+============================================================
+
+Checkpoint: 1__AUC_0.73417_90.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_Fake1_2025-12-12-10:10:55_fd4c21/best_model/2025-12-12-10:10:55_fd4c21/1__AUC_0.73417_90.pth.tar
+Epoch: 90
+
+Test AUC Scores:
+  FSW       : 0.3906
+============================================================
+
+============================================================
+Test Results - 2025-12-18 09:58:58
+============================================================
+
+Checkpoint: 1__AUC_0.75774_220.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_Fake3_2025-12-12-10:10:38_4f1af7/best_model/2025-12-12-10:10:38_4f1af7/1__AUC_0.75774_220.pth.tar
+Epoch: 220
+
+Test AUC Scores:
+  FSW       : 0.4771
+============================================================
+
+============================================================
+Test Results - 2025-12-18 10:41:04
+============================================================
+
+Checkpoint: 1__AUC_0.72774_90.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_Fake5_2025-12-11-18:00:15_9e901a/best_model/2025-12-11-18:00:15_9e901a/1__AUC_0.72774_90.pth.tar
+Epoch: 90
+
+Test AUC Scores:
+  FSW       : 0.3749
+============================================================
+
+============================================================
+Test Results - 2025-12-18 10:44:24
+============================================================
+
+Checkpoint: 1__AUC_0.76009_210.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_2025-12-12-15:56:34_6c93e6/best_model/2025-12-12-15:56:34_6c93e6/1__AUC_0.76009_210.pth.tar
+Epoch: 210
+
+Test AUC Scores:
+  FSW       : 0.4058
+============================================================
+
+============================================================
+Test Results - 2025-12-18 11:26:25
+============================================================
+
+Checkpoint: 1__AUC_0.74027_185.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/mae/2branch_standard_DF_All_Fake100_2025-12-14-12:17:35_a29a1a/best_model/2025-12-14-12:17:35_a29a1a/1__AUC_0.74027_185.pth.tar
+Epoch: 185
+
+Test AUC Scores:
+  FSW       : 0.4041
+============================================================
+
+============================================================
+Test Results - 2025-12-18 22:31:56
+============================================================
+
+Checkpoint: 1__AUC_0.7554_100.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_360f_2025-12-15-12:31:43_84a3ef/best_model/2025-12-15-12:31:43_84a3ef/1__AUC_0.7554_100.pth.tar
+Epoch: 100
+
+Test AUC Scores:
+  DF        : 0.7850
+  F2F       : 0.9867
+  FSW       : 0.6227
+  NT        : 0.6676
+  FS        : 0.5257
+  Mixed     : 0.7659
+
+  Average (excluding FS)   : 0.7655
+============================================================
+
+============================================================
+Test Results - 2025-12-18 22:41:28
+============================================================
+
+Checkpoint: 1__AUC_0.7254_60.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_180f_2025-12-15-17:12:16_6c405e/best_model/2025-12-15-17:12:16_6c405e/1__AUC_0.7254_60.pth.tar
+Epoch: 60
+
+Test AUC Scores:
+  DF        : 0.7260
+  F2F       : 0.9643
+  FSW       : 0.6174
+  NT        : 0.6267
+  FS        : 0.4890
+  Mixed     : 0.7340
+
+  Average (excluding FS)   : 0.7336
+============================================================
+
+============================================================
+Test Results - 2025-12-19 02:45:56
+============================================================
+
+Checkpoint: 1__AUC_0.72584_235.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_90f_2025-12-17-09:32:39_d09531/best_model/2025-12-17-09:32:39_d09531/1__AUC_0.72584_235.pth.tar
+Epoch: 235
+
+Test AUC Scores:
+  DF        : 0.7284
+  F2F       : 0.9509
+  FSW       : 0.5985
+  NT        : 0.6467
+  FS        : 0.5212
+  Mixed     : 0.7345
+
+  Average (excluding FS)   : 0.7311
+============================================================
+
+============================================================
+Test Results - 2025-12-19 11:06:24
+============================================================
+
+Checkpoint: 1__AUC_0.7554_100.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_360f_2025-12-15-12:31:43_84a3ef/best_model/2025-12-15-12:31:43_84a3ef/1__AUC_0.7554_100.pth.tar
+Epoch: 100
+
+Test AUC Scores:
+  DFD       : 0.9397
+============================================================
+
+============================================================
+Test Results - 2025-12-19 11:06:24
+============================================================
+
+Checkpoint: 1__AUC_0.7254_60.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_180f_2025-12-15-17:12:16_6c405e/best_model/2025-12-15-17:12:16_6c405e/1__AUC_0.7254_60.pth.tar
+Epoch: 60
+
+Test AUC Scores:
+  DFD       : 0.8404
+============================================================
+
+============================================================
+Test Results - 2025-12-19 11:09:34
+============================================================
+
+Checkpoint: 1__AUC_0.72584_235.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_90f_2025-12-17-09:32:39_d09531/best_model/2025-12-17-09:32:39_d09531/1__AUC_0.72584_235.pth.tar
+Epoch: 235
+
+Test AUC Scores:
+  DFD       : 0.9006
+============================================================
+
+============================================================
+Test Results - 2025-12-19 11:26:30
+============================================================
+
+Checkpoint: 1__AUC_0.7554_100.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_360f_2025-12-15-12:31:43_84a3ef/best_model/2025-12-15-12:31:43_84a3ef/1__AUC_0.7554_100.pth.tar
+Epoch: 100
+
+Test AUC Scores:
+  DFD       : 0.9397
+============================================================
+
+============================================================
+Test Results - 2025-12-19 11:26:30
+============================================================
+
+Checkpoint: 1__AUC_0.7254_60.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_180f_2025-12-15-17:12:16_6c405e/best_model/2025-12-15-17:12:16_6c405e/1__AUC_0.7254_60.pth.tar
+Epoch: 60
+
+Test AUC Scores:
+  DFD       : 0.8404
+============================================================
+
+============================================================
+Test Results - 2025-12-19 11:29:27
+============================================================
+
+Checkpoint: 1__AUC_0.72584_235.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_90f_2025-12-17-09:32:39_d09531/best_model/2025-12-17-09:32:39_d09531/1__AUC_0.72584_235.pth.tar
+Epoch: 235
+
+Test AUC Scores:
+  DFD       : 0.9006
+============================================================
+
+============================================================
+Test Results - 2025-12-19 12:02:32
+============================================================
+
+Checkpoint: 1__AUC_0.7554_100.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_360f_2025-12-15-12:31:43_84a3ef/best_model/2025-12-15-12:31:43_84a3ef/1__AUC_0.7554_100.pth.tar
+Epoch: 100
+
+Test AUC Scores:
+  DFD       : 0.9397
+============================================================
+
+============================================================
+Test Results - 2025-12-19 12:02:33
+============================================================
+
+Checkpoint: 1__AUC_0.7254_60.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_180f_2025-12-15-17:12:16_6c405e/best_model/2025-12-15-17:12:16_6c405e/1__AUC_0.7254_60.pth.tar
+Epoch: 60
+
+Test AUC Scores:
+  DFD       : 0.8404
+============================================================
+
+============================================================
+Test Results - 2025-12-19 12:05:25
+============================================================
+
+Checkpoint: 1__AUC_0.72584_235.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_90f_2025-12-17-09:32:39_d09531/best_model/2025-12-17-09:32:39_d09531/1__AUC_0.72584_235.pth.tar
+Epoch: 235
+
+Test AUC Scores:
+  DFD       : 0.9006
+============================================================
+
+============================================================
+Test Results - 2025-12-19 12:35:10
+============================================================
+
+Checkpoint: 1__AUC_0.7254_60.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_180f_2025-12-15-17:12:16_6c405e/best_model/2025-12-15-17:12:16_6c405e/1__AUC_0.7254_60.pth.tar
+Epoch: 60
+
+Test AUC Scores:
+  CelebDF   : 0.6085
+============================================================
+
+============================================================
+Test Results - 2025-12-19 12:35:10
+============================================================
+
+Checkpoint: 1__AUC_0.7554_100.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_360f_2025-12-15-12:31:43_84a3ef/best_model/2025-12-15-12:31:43_84a3ef/1__AUC_0.7554_100.pth.tar
+Epoch: 100
+
+Test AUC Scores:
+  CelebDF   : 0.6340
+============================================================
+
+============================================================
+Test Results - 2025-12-19 12:40:55
+============================================================
+
+Checkpoint: 1__AUC_0.72584_235.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae/2branch_standard_F2F_All_Fake1_90f_2025-12-17-09:32:39_d09531/best_model/2025-12-17-09:32:39_d09531/1__AUC_0.72584_235.pth.tar
+Epoch: 235
+
+Test AUC Scores:
+  CelebDF   : 0.5750
+============================================================
+
+============================================================
+Test Results - 2025-12-19 20:32:07
+============================================================
+
+Checkpoint: 1__AUC_0.76231_30.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_360f_2025-12-17-10:19:11_03a75e/best_model/2025-12-17-10:19:11_03a75e/1__AUC_0.76231_30.pth.tar
+Epoch: 30
+
+Test AUC Scores:
+  DF        : 0.8085
+  F2F       : 0.9785
+  FSW       : 0.6599
+  NT        : 0.6440
+  FS        : 0.5873
+  Mixed     : 0.7717
+
+  Average (excluding FS)   : 0.7727
+============================================================
+
+============================================================
+Test Results - 2025-12-19 20:41:01
+============================================================
+
+Checkpoint: 1__AUC_0.71832_70.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_180f_2025-12-17-10:20:10_f8bcbb/best_model/2025-12-17-10:20:10_f8bcbb/1__AUC_0.71832_70.pth.tar
+Epoch: 70
+
+Test AUC Scores:
+  DF        : 0.7535
+  F2F       : 0.9679
+  FSW       : 0.6129
+  NT        : 0.6284
+  FS        : 0.5081
+  Mixed     : 0.7420
+
+  Average (excluding FS)   : 0.7407
+============================================================
+
+============================================================
+Test Results - 2025-12-19 20:45:39
+============================================================
+
+Checkpoint: 1__AUC_0.68969_200.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_90f_2025-12-18-08:30:01_985f3c/best_model/2025-12-18-08:30:01_985f3c/1__AUC_0.68969_200.pth.tar
+Epoch: 200
+
+Test AUC Scores:
+  DF        : 0.7156
+  F2F       : 0.9283
+  FSW       : 0.5870
+  NT        : 0.5986
+  FS        : 0.5954
+  Mixed     : 0.7288
+
+  Average (excluding FS)   : 0.7074
+============================================================
+
+============================================================
+Test Results - 2025-12-19 20:48:36
+============================================================
+
+Checkpoint: 1__AUC_0.76231_30.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_360f_2025-12-17-10:19:11_03a75e/best_model/2025-12-17-10:19:11_03a75e/1__AUC_0.76231_30.pth.tar
+Epoch: 30
+
+Test AUC Scores:
+  DFD       : 0.8847
+============================================================
+
+============================================================
+Test Results - 2025-12-19 20:48:39
+============================================================
+
+Checkpoint: 1__AUC_0.71832_70.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_180f_2025-12-17-10:20:10_f8bcbb/best_model/2025-12-17-10:20:10_f8bcbb/1__AUC_0.71832_70.pth.tar
+Epoch: 70
+
+Test AUC Scores:
+  DFD       : 0.8771
+============================================================
+
+============================================================
+Test Results - 2025-12-19 20:51:32
+============================================================
+
+Checkpoint: 1__AUC_0.68969_200.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_90f_2025-12-18-08:30:01_985f3c/best_model/2025-12-18-08:30:01_985f3c/1__AUC_0.68969_200.pth.tar
+Epoch: 200
+
+Test AUC Scores:
+  DFD       : 0.9495
+============================================================
+
+============================================================
+Test Results - 2025-12-19 20:57:28
+============================================================
+
+Checkpoint: 1__AUC_0.76231_30.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_360f_2025-12-17-10:19:11_03a75e/best_model/2025-12-17-10:19:11_03a75e/1__AUC_0.76231_30.pth.tar
+Epoch: 30
+
+Test AUC Scores:
+  CelebDF   : 0.6641
+============================================================
+
+============================================================
+Test Results - 2025-12-19 20:57:38
+============================================================
+
+Checkpoint: 1__AUC_0.71832_70.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_180f_2025-12-17-10:20:10_f8bcbb/best_model/2025-12-17-10:20:10_f8bcbb/1__AUC_0.71832_70.pth.tar
+Epoch: 70
+
+Test AUC Scores:
+  CelebDF   : 0.6324
+============================================================
+
+============================================================
+Test Results - 2025-12-19 21:03:22
+============================================================
+
+Checkpoint: 1__AUC_0.68969_200.pth.tar
+Full path: /seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_90f_2025-12-18-08:30:01_985f3c/best_model/2025-12-18-08:30:01_985f3c/1__AUC_0.68969_200.pth.tar
+Epoch: 200
+
+Test AUC Scores:
+  CelebDF   : 0.6507
+============================================================

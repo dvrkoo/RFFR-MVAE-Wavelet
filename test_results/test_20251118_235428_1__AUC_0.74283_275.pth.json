@@ -1,0 +1,51 @@
+{
+  "timestamp": "2025-11-18T23:54:28.009370",
+  "checkpoint": {
+    "path": "checkpoint/mae/2branch_standard_F2F_All_Fake1_2025-10-28-10:16:24_ebaa2f/1__AUC_0.74283_275.pth.tar",
+    "epoch": 275,
+    "validation_aucs": [
+      0.7428265306122449,
+      0.8101530612244898,
+      0.9713265306122449,
+      0.6197959183673469,
+      0.6637244897959185,
+      0.597908163265306
+    ],
+    "best_aucs": [
+      0.7428265306122449,
+      0.8720408163265305,
+      0.9913775510204081,
+      0.6661224489795918
+    ]
+  },
+  "test_config": {
+    "samples": 14000,
+    "batch_size": 64,
+    "datasets": "all",
+    "sampling_method": "random_frame",
+    "frames_per_video": null,
+    "uniform_frames": null,
+    "gpu": "1",
+    "checkpoint_strategy": "highest_auc"
+  },
+  "results": {
+    "DF": 0.7426663698979592,
+    "F2F": 0.9770045051020411,
+    "FSW": 0.6006699668367348,
+    "NT": 0.659930400510204,
+    "FS": 0.6048856173469388,
+    "Mixed": 0.7467231249999999
+  },
+  "summary": {
+    "average_auc": 0.7450678105867348,
+    "datasets_tested": [
+      "DF",
+      "F2F",
+      "FSW",
+      "NT",
+      "FS",
+      "Mixed"
+    ],
+    "num_datasets": 6
+  }
+}

@@ -1,0 +1,335 @@
+from .label_path import get_label_path
+
+
+class DefaultConfigs(object):
+
+    generative_model_type = "mae"  # Options: "mae", "mae_vae", "vae"
+    vae_latent_dim = 256  # The latent dimension you found works bestwavelet
+    vae_base_channels = 64  # Base channels for VAE encoder/decoder
+
+    use_iterative_block_masking = True
+
+    # Setting
+    seed = 42
+    comment = "Open-sourced code."
+    # Logging
+    use_wandb = True
+    wandb_project = "rffr-classifier"
+    wandb_entity = None  # Set to your wandb username if needed
+
+    num_workers = 12  # Number of data loading workers
+    pin_memory = True  # Pin memory for DataLoader
+    # Models
+    lr = 2e-5
+    batch_size = 8
+    gpus = "0"
+    model = "rffr"
+    if generative_model_type == "mae":
+        # mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae/FF_FN_best/best_loss_0.0032_200.pth.tar"  # FF + FN
+        mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/mae/CDF/best_loss_0.00275_100.pth.tar"  # actually performs better FF
+        # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/mae/CDF/best_loss_0.00113_100.pth.tar"
+    elif generative_model_type == "mae_vae":
+        mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/mae_vae/CDF/best_loss_0.03285_100.pth.tar"  # FF only
+        # mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae_vae/best/best_loss_0.00811_350.pth.tar"  # FF + FN
+
+    # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/vae/CDF/best_loss_0.01532_50.pth.tar"
+    # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/wavelet_vae/CDF/best_loss_0.02849_50.pth.tar"
+    pretrained_weights = "../pretrain/jx_vit_base_p16_224-80ecf9dd.pth"
+    # Training Options
+    use_gradient_accumulation = (
+        False  # Enable gradient accumulation for effective larger batch sizes
+    )
+    gradient_accumulation_steps = (
+        4  # Number of micro-batches to accumulate before optimizer step
+    )
+    # When gradient accumulation is enabled:
+    # - effective_batch_size = batch_size * gradient_accumulation_steps
+    # - May reduce training stability due to BatchNorm statistics computed on micro-batches
+    # - Slower training but lower memory usage
+
+    # Data
+    protocol = "F2F_All_Fake1"
+    dataset_base = "../data_label/"
+    (
+        real_label_path,
+        fake_label_path,
+        val_label_path,
+        test_label_path,
+        metrics,
+        real_test_label_path,
+    ) = get_label_path(protocol)
+    # Schedule
+    max_iter = (
+        15000  # 600 epochs * 50 iters per epoch (increased for better convergence)
+    )
+    iter_per_epoch = 50
+    # Dynamic validation: every 10 epochs (0-100), then every 5 epochs (100-600)
+    # Will be calculated dynamically in train.py
+    # Multi-Forgery Mixing
+    use_mixed_forgeries = False  # Enable dynamic multi-forgery mixing at training time
+    forgery_mix_types = [
+        "f2f",
+        "df",
+    ]  # Which forgeries to mix (lowercase: df, f2f, fsw, nt, fs)
+    forgery_mix_ratios = [0.5, 0.5]  # Ratios for each forgery (must sum to 1.0)
+    forgery_mix_base_dir = (
+        "ff_270_fake1"  # Base directory containing forgery label files
+    )
+    total_fake_samples = (
+        720  # Total fake samples to use (None = use all available with ratios)
+    )
+
+    # Video subset limiting (for data scaling experiments)
+    max_fake_frames = 1  # None = use all frames, or set to 90, 180, 360, etc.
+    # When enabled:
+    #   - Limits fake frames to first N frames (corresponds to first N videos for fake1)
+    #   - Keeps all real frames unchanged (7,200 frames)
+    #   - Example: max_fake_frames=90 → 90 fake + 7,200 real (1:80 ratio)
+    #   - WandB run name will include frame count (e.g., "model_protocol_90f_timestamp")
+
+    # Video Subset Selection (for training data experiments with fake100)
+    # Selects specific fake videos and uses ALL frames from those videos
+    # Real data always uses all 7,200 frames (unchanged)
+    use_video_subset = False  # Enable video-level subsetting for FAKE videos only
+    video_subset_count = None  # Number of fake videos to use (e.g., 50, 100, 200)
+    video_subset_start_idx = 0  # Starting video index (default: 0 for first N videos)
+
+    # Learning Rate Scheduling
+    use_warmup = False  # Enable linear warmup for stable training
+    warmup_steps = 2000  # Linear warmup for first 2000 iterations (40 epochs)
+    warmup_start_lr = 1e-6  # Starting LR for warmup (10% of target LR)
+
+    use_scheduler = False  # Enable LR scheduling after warmup
+    scheduler_type = "cosine"  # Options: "cosine", "multistep", "exponential"
+
+    # Cosine Annealing settings
+    cosine_min_lr = 1e-7  # Minimum LR for cosine annealing
+    cosine_T_max = None  # Will be set to (max_iter - warmup_steps) if None
+
+    # MultiStep LR settings (if scheduler_type == "multistep")
+    multistep_milestones = [10000, 20000, 25000]  # Iteration milestones for LR drops
+    multistep_gamma = 0.5  # LR multiplication factor at milestones
+
+    # Exponential LR settings (if scheduler_type == "exponential")
+    exponential_gamma = 0.99995  # LR decay factor per iteration
+
+    # Optimizer settings
+    use_adamw = False  # Use AdamW instead of Adam for better generalization
+    weight_decay = 1e-4  # L2 regularization for AdamW
+
+    # Anomaly Detection Mode
+    anomaly_detection_mode = (
+        False  # Train only on real samples, detect fakes as anomalies
+    )
+    center_loss_weight = 2.0  # Weight for center loss in anomaly detection (increased to keep real near center)
+    center_margin = 5.0  # Margin for separating real samples from decision boundary
+    repulsion_weight = 15.0  # Weight for pushing fake samples away from center (matched to ~15:1 real:fake ratio in Fake1 protocol)
+    anomaly_score_percentile = (
+        95  # Percentile of real sample distances to use as threshold
+    )
+
+    # Hybrid Multi-Task Loss (Anomaly Detection)
+    use_hybrid_loss = (
+        True  # Combine compactness loss with cross-entropy in anomaly mode
+    )
+    compactness_weight = 0.1  # Weight for compactness loss (λ1)
+    classification_weight = 1.0  # Weight for cross-entropy loss (λ2)
+
+    use_wavelets = False  # Disabled for dual-branch wavelet mode
+    wavelet_type = "db4"  # Wavelet type (db4, haar, bior2.2, coif2)
+    wavelet_levels = (
+        1  # Number of decomposition levels (optimal for deepfake detection)
+    )
+    wavelet_high_freq_weight = 1.0  # Weight multiplier for high-frequency components
+
+    generator_outputs_wavelets = False  # Whether the generator model outputs wavelets (requires special training)
+    classifier_uses_wavelets = (
+        False  # Whether the classifier computes wavelets from RGB in real-time
+    )
+
+    # Architecture Options
+    separate_wavelet_branch = False  # Disabled for dual-branch wavelet mode
+    four_branch_wavelet = False  # Disabled for dual-branch wavelet mode
+    # When four_branch_wavelet=True:
+    #   - Branch 1: RGB (768 features)
+    #   - Branch 2-5: LL, LH, HL, HH wavelet subbands (768 features each)
+    #   - Final classifier input: 1536 dimensions (RGB + fused wavelets)
+    # When separate_wavelet_branch=True (3-branch):
+    #   - Branch 1: RGB (768 features)
+    #   - Branch 2: Spatial residuals (768 features)
+    #   - Branch 3: Fused wavelet coefficients (768 features)
+    #   - Final classifier input: 2304 dimensions
+    # When both False (2-branch):
+    #   - Branch 1: RGB (768 features)
+    #   - Branch 2: Spatial residuals (768 features)
+    #   - Final classifier input: 1536 dimensions
+
+    # Pretraining Options for Wavelet Branches
+    use_imagenet_pretrain_for_wavelets = (
+        False  # Use random initialization for frequency domain (recommended)
+    )
+    # When True: All branches use ImageNet pretraining
+    # When False: Only RGB branch uses ImageNet pretraining, wavelet branches use random initialization
+    # ImageNet features (edges, textures, objects) don't transfer well to deepfake frequency artifacts
+
+    use_adaptive_vit = (
+        True  # Use AdaptiveViT with dynamic patch embedding for variable input sizes
+    )
+    # When True: Wavelet branches use AdaptiveViT that adapts patch size based on input dimensions
+    # When False: Use standard CNN-based WaveletSubbandClassifier (lower performance but more memory efficient)
+    # AdaptiveViT maintains ~196 patches regardless of input size for consistent processing
+
+    wavelet_only_mode = False  # Disabled for dual-branch wavelet mode
+    # When True: Single-branch architecture processing ONLY 12-channel wavelet residuals
+    #   - No RGB branch
+    #   - No spatial residual branch
+    #   - Direct wavelet residuals from generator (no RGB→wavelet conversion)
+    #   - Final classifier input: 768 dimensions (single wavelet branch)
+    # When False: Use multi-branch architectures (2-branch, 3-branch, or 5-branch based on other flags)
+    # IMPORTANT: Requires generator checkpoint trained with use_wavelet_reconstruction=True
+
+    wavelet_dual_branch_mode = False  # ENABLED: Use 2-branch wavelet architecture (original wavelets + wavelet residuals)
+    # When True: Dual-branch architecture mirroring original RGB 2-branch logic
+    #   - Branch 1: Original image → wavelets (ground truth frequency)
+    #   - Branch 2: Generator wavelet residuals (reconstruction error in frequency)
+    #   - Both branches in frequency domain (no RGB spatial features)
+    #   - Final classifier input: 1536 dimensions (768×2)
+    # When False: Use other architectures based on wavelet_only_mode and other flags
+    # IMPORTANT: Requires generator_outputs_wavelets=True (generator trained to output wavelets)
+    # NOTE: Takes precedence over wavelet_only_mode if both are True
+
+    wavelet_residual_branch = (
+        False  # New 3-branch mode: RGB + spatial residuals + wavelet residuals
+    )
+    # When True: 3-branch architecture combining spatial and frequency domains
+    #   - Branch 1: RGB input (768 features)
+    #   - Branch 2: Spatial residuals from generator (768 features)
+    #   - Branch 3: Wavelet residuals computed in real-time (768 features)
+    #   - Final classifier input: 2304 dimensions (768×3)
+    # IMPORTANT: Works with ANY generator checkpoint (computes wavelets externally in real-time)
+    # NOTE: Takes precedence over separate_wavelet_branch if both are True
+
+    # paths information
+    checkpoint_path = "./checkpoint/" + model + "/current_model/"
+    best_model_path = "./checkpoint/" + model + "/best_model/"
+    logs = "./logs/"
+
+    def set_run_paths(self, run_identifier):
+        """Update checkpoint paths to be run-specific"""
+        self.checkpoint_path = f"/seidenas/users/nmarini/classifier_checkpoint/FF_FN{self.generative_model_type}/{run_identifier}/current_model/"
+        self.best_model_path = f"/seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FN{self.generative_model_type}/{run_identifier}/best_model/"
+
+    # Code Saver
+    save_code = [
+        "configs/config.py",
+        "train.py",
+        "utils/simple_evaluate.py",
+        "utils/dataset.py",
+        "utils/wavelet_utils.py",
+        "models/model_mae.py",
+        "models/model_detector.py",
+    ]
+
+
+config = DefaultConfigs()
+
+
+def list_available_protocols():
+    """List all available training protocols and their descriptions."""
+    protocols = {
+        "F2F_All": "Train on Face2Face only",
+        "DF_All": "Train on Deepfakes only",
+        "FSW_All": "Train on FaceSwap only",
+        "NT_All": "Train on NeuralTextures only",
+        "FS_All": "Train on FaceShifter only (if available)",
+        "Mixed_All": "Train on all forgeries combined (recommended)",
+        "F2F_All_Fake5": "Train on Face2Face with reduced fake frames (5 per video)",
+        "DF_All_Fake5": "Train on Deepfakes with reduced fake frames (5 per video)",
+        "Mixed_All_Fake5": "Train on all forgeries with reduced fake frames (5 per video)",
+        "F2F_All_Fake3": "Train on Face2Face with reduced fake frames (3 per video)",
+        "DF_All_Fake3": "Train on Deepfakes with reduced fake frames (3 per video)",
+        "Mixed_All_Fake3": "Train on all forgeries with reduced fake frames (3 per video)",
+    }
+
+    print("Available training protocols:")
+    for protocol, description in protocols.items():
+        current = " (CURRENT)" if protocol == config.protocol else ""
+        print(f"  {protocol}: {description}{current}")
+
+    print(
+        "\nNote: Protocols with _FakeN suffix use reduced frames for fake videos only."
+    )
+    print("Real videos always use the original frame count (10 frames per video).")
+
+    return protocols
+
+
+def switch_protocol(new_protocol):
+    """Switch to a different training protocol."""
+    available_protocols = [
+        "F2F_All",
+        "DF_All",
+        "FSW_All",
+        "NT_All",
+        "FS_All",
+        "Mixed_All",
+        "F2F_All_Fake5",
+        "DF_All_Fake5",
+        "FSW_All_Fake5",
+        "NT_All_Fake5",
+        "FS_All_Fake5",
+        "Mixed_All_Fake5",
+        "F2F_All_Fake3",
+        "DF_All_Fake3",
+        "FSW_All_Fake3",
+        "NT_All_Fake3",
+        "FS_All_Fake3",
+        "Mixed_All_Fake3",
+        "F2F_All_Fake7",
+        "DF_All_Fake7",
+        "FSW_All_Fake7",
+        "NT_All_Fake7",
+        "FS_All_Fake7",
+        "Mixed_All_Fake7",
+        "F2F_All_Fake100",
+    ]
+
+    if new_protocol not in available_protocols:
+        print(f"Error: Protocol '{new_protocol}' not available.")
+        print("Available protocols:", ", ".join(available_protocols))
+        return False
+
+    config.protocol = new_protocol
+
+    (
+        config.real_label_path,
+        config.fake_label_path,
+        config.val_label_path,
+        config.test_label_path,
+        config.metrics,
+        config.real_test_label_path,
+    ) = get_label_path(new_protocol)
+
+    print(f"Protocol switched to: {new_protocol}")
+    return True
+
+
+# DFD and CelebDF specific real test paths
+config.dfd_real_test_label_path = (
+    "Faceforensics/excludes_hq/dfd_real_test_label_fixed.json"
+)
+config.celebdf_real_test_label_path = (
+    "Faceforensics/excludes_hq/celebdf_real_test_label_fixed.json"
+)
+
+# Add DFD and CelebDF fake test paths if not already present
+if "Faceforensics/excludes_hq/dfd_test_label_fixed.json" not in config.test_label_path:
+    config.test_label_path.append("Faceforensics/excludes_hq/dfd_test_label_fixed.json")
+
+if (
+    "Faceforensics/excludes_hq/celebdf_test_label_fixed.json"
+    not in config.test_label_path
+):
+    config.test_label_path.append(
+        "Faceforensics/excludes_hq/celebdf_test_label_fixed.json"
+    )

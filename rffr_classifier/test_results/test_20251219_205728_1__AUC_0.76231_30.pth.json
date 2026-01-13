@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-12-19T20:57:28.604953",
+  "checkpoint": {
+    "path": "/seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FNmae_vae/3branch_wavelet_residual_F2F_All_Fake1_360f_2025-12-17-10:19:11_03a75e/best_model/2025-12-17-10:19:11_03a75e/1__AUC_0.76231_30.pth.tar",
+    "epoch": 30,
+    "validation_aucs": [
+      0.7623086734693878,
+      0.8037244897959184,
+      0.965204081632653,
+      0.658265306122449,
+      0.6223469387755102
+    ],
+    "best_aucs": [
+      0.7623086734693878,
+      0.8037244897959184,
+      0.965204081632653,
+      0.658265306122449
+    ]
+  },
+  "test_config": {
+    "samples": 14000,
+    "batch_size": 64,
+    "datasets": [
+      "CelebDF"
+    ],
+    "sampling_method": "random_frame",
+    "frames_per_video": null,
+    "uniform_frames": null,
+    "gpu": "0",
+    "checkpoint_strategy": "highest_auc"
+  },
+  "results": {
+    "CelebDF": 0.6641212184520685
+  },
+  "summary": {
+    "average_auc": 0.6641212184520685,
+    "datasets_tested": [
+      "CelebDF"
+    ],
+    "num_datasets": 1
+  }
+}

@@ -1,0 +1,756 @@
+import os
+import random
+import hashlib
+import numpy as np
+import math
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from configs.config import config
+from datetime import datetime
+import time
+import wandb
+
+from utils.utils import save_checkpoint, AverageMeter, Logger
+from utils.utils import accuracy, mkdirs, save_code, remove_used
+from utils.simple_evaluate import eval_multiple_dataset
+from utils.get_loader import get_dataset
+from utils.center_loss import CompactnessLoss
+
+from models.model_detector import RFFRL
+
+
+random.seed(config.seed)
+np.random.seed(config.seed)
+torch.manual_seed(config.seed)
+torch.cuda.manual_seed_all(config.seed)
+torch.cuda.manual_seed(config.seed)
+os.environ["CUDA_VISIBLE_DEVICES"] = config.gpus
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
+device = "cuda"
+
+
+def get_warmup_lr(iter_num, warmup_steps, warmup_start_lr, target_lr):
+    """Linear warmup learning rate schedule"""
+    if iter_num < warmup_steps:
+        return warmup_start_lr + (target_lr - warmup_start_lr) * iter_num / warmup_steps
+    return target_lr
+
+
+def get_cosine_lr(iter_num, warmup_steps, max_iter, target_lr, min_lr):
+    """Cosine annealing learning rate schedule after warmup"""
+    if iter_num < warmup_steps:
+        return get_warmup_lr(iter_num, warmup_steps, config.warmup_start_lr, target_lr)
+
+    # Cosine annealing phase
+    cosine_iter = iter_num - warmup_steps
+    cosine_max_iter = max_iter - warmup_steps
+    cosine_lr = min_lr + (target_lr - min_lr) * 0.5 * (
+        1 + math.cos(math.pi * cosine_iter / cosine_max_iter)
+    )
+    return cosine_lr
+
+
+def update_learning_rate(optimizer, lr):
+    """Update learning rate for all parameter groups"""
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = lr
+
+
+def train():
+    # Profile
+    timenow = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+    runhash = hashlib.sha1()
+    runhash.update(timenow.encode("utf-8"))
+    runhash.update(config.comment.encode("utf-8"))
+    runhash = runhash.hexdigest()[:6]
+
+    # Determine architecture string for run naming
+    if config.wavelet_residual_branch:
+        arch_name = "3branch_wavelet_residual"
+    elif config.wavelet_dual_branch_mode:
+        arch_name = "2branch_wavelet_dual"
+    elif config.wavelet_only_mode:
+        arch_name = "1branch_wavelet_only"
+    elif config.four_branch_wavelet:
+        arch_name = "5branch_wavelet"
+    elif config.separate_wavelet_branch:
+        arch_name = "3branch_wavelet"
+    else:
+        arch_name = "2branch_standard"
+
+    # Create run-specific identifiers
+    run_id = f"{timenow}_{runhash}"
+    run_name = f"{config.model}_{arch_name}_{config.protocol}"
+    if config.max_fake_frames is not None:
+        run_name += f"_{config.max_fake_frames}f"
+    if config.use_video_subset and config.video_subset_count is not None:
+        run_name += f"_v{config.video_subset_count}"
+    run_name += f"_{timenow}_{runhash}"
+
+    # Update checkpoint paths to be run-specific
+    run_identifier = f"{arch_name}_{config.protocol}"
+    if config.max_fake_frames is not None:
+        run_identifier += f"_{config.max_fake_frames}f"
+    if config.use_video_subset and config.video_subset_count is not None:
+        run_identifier += f"_v{config.video_subset_count}"
+    run_identifier += f"_{run_id}"
+    config.set_run_paths(run_identifier)
+
+    save_code(timenow, runhash)
+    mkdirs(timenow + "_" + runhash)
+
+    # Initialize Weights & Biases
+    if config.use_wandb:
+        wandb.init(
+            project=config.wandb_project,
+            entity=config.wandb_entity,
+            name=run_name,
+            config={
+                # Training hyperparameters
+                "learning_rate": config.lr,
+                "batch_size": config.batch_size,
+                "effective_batch_size": config.batch_size
+                * (
+                    config.gradient_accumulation_steps
+                    if config.use_gradient_accumulation
+                    else 1
+                ),
+                "max_iter": config.max_iter,
+                "iter_per_epoch": config.iter_per_epoch,
+                "seed": config.seed,
+                "num_workers": config.num_workers,
+                "pin_memory": config.pin_memory,
+                # Model and protocol
+                "model": config.model,
+                "protocol": config.protocol,
+                "architecture": arch_name,
+                "comment": config.comment,
+                # Paths
+                "mae_path": config.mae_path,
+                "pretrained_weights": config.pretrained_weights,
+                "dataset_base": config.dataset_base,
+                # Optimizer settings
+                "use_adamw": config.use_adamw,
+                "weight_decay": config.weight_decay if config.use_adamw else 0.0,
+                # Anomaly Detection
+                "anomaly_detection_mode": config.anomaly_detection_mode,
+                "center_loss_weight": (
+                    config.center_loss_weight if config.anomaly_detection_mode else None
+                ),
+                "center_margin": (
+                    config.center_margin if config.anomaly_detection_mode else None
+                ),
+                "anomaly_score_percentile": (
+                    config.anomaly_score_percentile
+                    if config.anomaly_detection_mode
+                    else None
+                ),
+                # Gradient accumulation
+                "use_gradient_accumulation": config.use_gradient_accumulation,
+                "gradient_accumulation_steps": (
+                    config.gradient_accumulation_steps
+                    if config.use_gradient_accumulation
+                    else 1
+                ),
+                # Learning rate scheduling
+                "use_warmup": config.use_warmup,
+                "warmup_steps": config.warmup_steps,
+                "warmup_start_lr": config.warmup_start_lr,
+                "use_scheduler": config.use_scheduler,
+                "scheduler_type": config.scheduler_type,
+                "cosine_min_lr": (
+                    config.cosine_min_lr if config.scheduler_type == "cosine" else None
+                ),
+                "cosine_T_max": (
+                    config.cosine_T_max if config.scheduler_type == "cosine" else None
+                ),
+                # Wavelet configuration
+                "use_wavelets": config.use_wavelets,
+                "wavelet_type": config.wavelet_type,
+                "wavelet_levels": config.wavelet_levels,
+                "wavelet_high_freq_weight": config.wavelet_high_freq_weight,
+                "generator_outputs_wavelets": config.generator_outputs_wavelets,
+                "classifier_uses_wavelets": config.classifier_uses_wavelets,
+                # Architecture flags
+                "wavelet_residual_branch": config.wavelet_residual_branch,
+                "separate_wavelet_branch": config.separate_wavelet_branch,
+                "four_branch_wavelet": config.four_branch_wavelet,
+                "wavelet_only_mode": config.wavelet_only_mode,
+                "wavelet_dual_branch_mode": config.wavelet_dual_branch_mode,
+                # Wavelet pretraining
+                "use_imagenet_pretrain_for_wavelets": config.use_imagenet_pretrain_for_wavelets,
+                "use_adaptive_vit": config.use_adaptive_vit,
+                # Generative model configuration
+                "generative_model_type": config.generative_model_type,
+                "vae_latent_dim": config.vae_latent_dim,
+                "vae_base_channels": config.vae_base_channels,
+                "use_iterative_block_masking": config.use_iterative_block_masking,
+                # Data limiting
+                "max_fake_frames": config.max_fake_frames,
+                "use_video_subset": config.use_video_subset,
+                "video_subset_count": config.video_subset_count,
+                "video_subset_start_idx": config.video_subset_start_idx,
+            },
+            tags=(
+                ["deepfake-detection", "rffr", config.protocol, arch_name]
+                + (
+                    [f"{config.max_fake_frames}frames"]
+                    if config.max_fake_frames is not None
+                    else []
+                )
+            ),
+            notes=f"RFFR classifier training - {arch_name} - {config.comment}",
+        )
+
+    # Model
+    net = RFFRL()
+    net = net.cuda()
+
+    if config.anomaly_detection_mode:
+        if config.wavelet_residual_branch:
+            feature_dim = 768 * 3
+        elif config.four_branch_wavelet:
+            feature_dim = 768 * 2
+        elif config.separate_wavelet_branch:
+            feature_dim = 768 * 3
+        elif config.wavelet_dual_branch_mode:
+            feature_dim = 768 * 2
+        elif config.wavelet_only_mode:
+            feature_dim = 768
+        else:
+            feature_dim = 768 * 2
+
+        print(
+            f"[Anomaly Detection] Initializing CompactnessLoss with feature_dim={feature_dim}, margin={config.center_margin}, repulsion_weight={config.repulsion_weight}"
+        )
+        center_loss = CompactnessLoss(
+            feature_dim=feature_dim,
+            num_classes=1,
+            margin=config.center_margin,
+            repulsion_weight=config.repulsion_weight,
+        ).cuda()
+        criterion = {"center": center_loss}
+
+        if config.use_hybrid_loss:
+            criterion["softmax"] = nn.CrossEntropyLoss().cuda()
+            print(
+                f"[Hybrid Loss] Enabled with compactness_weight={config.compactness_weight}, classification_weight={config.classification_weight}"
+            )
+    else:
+        criterion = {"softmax": nn.CrossEntropyLoss().cuda()}
+
+    # Optimizer selection
+    if config.anomaly_detection_mode:
+        params_to_optimize = list(net.dd.parameters()) + list(
+            criterion["center"].parameters()
+        )
+        print(
+            f"[Anomaly Detection] Optimizer includes {len(list(net.dd.parameters()))} model params + {len(list(criterion['center'].parameters()))} center params"
+        )
+    else:
+        params_to_optimize = net.dd.parameters()
+
+    if config.use_adamw:
+        optimizer = optim.AdamW(
+            params_to_optimize,
+            lr=config.warmup_start_lr if config.use_warmup else config.lr,
+            weight_decay=config.weight_decay,
+        )
+    else:
+        optimizer = optim.Adam(
+            params_to_optimize,
+            lr=config.warmup_start_lr if config.use_warmup else config.lr,
+        )
+
+    # Scheduler setup
+    scheduler = None
+    if (
+        config.use_scheduler and not config.use_warmup
+    ):  # Only create scheduler if not using manual warmup
+        if config.scheduler_type == "cosine":
+            T_max = config.cosine_T_max if config.cosine_T_max else config.max_iter
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=T_max, eta_min=config.cosine_min_lr
+            )
+        elif config.scheduler_type == "multistep":
+            scheduler = optim.lr_scheduler.MultiStepLR(
+                optimizer,
+                milestones=config.multistep_milestones,
+                gamma=config.multistep_gamma,
+            )
+        elif config.scheduler_type == "exponential":
+            scheduler = optim.lr_scheduler.ExponentialLR(
+                optimizer, gamma=config.exponential_gamma
+            )
+
+    # Gradient accumulation to maintain effective batch size
+    if config.use_gradient_accumulation:
+        accumulation_steps = config.gradient_accumulation_steps
+    else:
+        accumulation_steps = 1  # No accumulation
+
+    # Evaluators - size depends on number of validation label paths
+    # Dynamically determined from config.val_label_path
+    num_val_sets = len(config.val_label_path)
+    aucs = [0] * num_val_sets
+    best_aucs = [0] * num_val_sets
+    is_best_AUC = [False] * num_val_sets
+    classifer_top1 = AverageMeter()
+
+    # Early stopping
+    best_mixed_auc = 0.0
+    patience = 20  # Stop if no improvement for 20 validation rounds
+    patience_counter = 0
+
+    # Data
+    train_real_dataloader, train_fake_dataloader, val_dataloader = get_dataset()
+    train_real_iter = iter(train_real_dataloader)
+    train_real_iters_per_epoch = len(train_real_iter)
+
+    train_fake_iter = iter(train_fake_dataloader)
+    train_fake_iters_per_epoch = len(train_fake_iter)
+
+    # Log actual dataset sizes to wandb after loading
+    if config.use_wandb:
+        actual_fake_frames = len(train_fake_dataloader.dataset)
+        actual_real_frames = len(train_real_dataloader.dataset)
+        wandb.config.update(
+            {
+                "actual_fake_frames": actual_fake_frames,
+                "actual_real_frames": actual_real_frames,
+                "fake_real_ratio": f"1:{actual_real_frames/actual_fake_frames:.1f}"
+                if actual_fake_frames > 0
+                else "N/A",
+            },
+            allow_val_change=True,
+        )
+
+    # Logs
+    log = Logger()
+    log.initialize(timenow, runhash)
+
+    # Training
+    epoch = 0
+    beginning_iter = 0
+    for iter_num in range(beginning_iter, config.max_iter + 1):
+        if iter_num % train_real_iters_per_epoch == 0:
+            train_real_iter = iter(train_real_dataloader)
+        if iter_num % train_fake_iters_per_epoch == 0:
+            train_fake_iter = iter(train_fake_dataloader)
+        if iter_num != 0 and iter_num % config.iter_per_epoch == 0:
+            epoch = epoch + 1
+            classifer_top1.reset()
+            if epoch % 2 == 0:
+                remove_used(
+                    os.path.join(config.best_model_path, timenow + "_" + runhash)
+                )
+
+        net.train(True)
+
+        # Zero gradients only at start of accumulation
+        if iter_num % accumulation_steps == 0:
+            optimizer.zero_grad()
+
+        # Update learning rate with warmup/scheduler
+        current_lr = None
+        if config.use_warmup and iter_num < config.warmup_steps:
+            # Manual warmup
+            current_lr = get_warmup_lr(
+                iter_num, config.warmup_steps, config.warmup_start_lr, config.lr
+            )
+            update_learning_rate(optimizer, current_lr)
+        elif config.use_warmup and iter_num == config.warmup_steps:
+            # Switch to target LR after warmup
+            current_lr = config.lr
+            update_learning_rate(optimizer, current_lr)
+
+            # Initialize scheduler after warmup if enabled
+            if config.use_scheduler:
+                remaining_iters = config.max_iter - config.warmup_steps
+                if config.scheduler_type == "cosine":
+                    T_max = (
+                        config.cosine_T_max if config.cosine_T_max else remaining_iters
+                    )
+                    scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                        optimizer, T_max=T_max, eta_min=config.cosine_min_lr
+                    )
+                elif config.scheduler_type == "multistep":
+                    # Adjust milestones for post-warmup iterations
+                    adjusted_milestones = [
+                        m - config.warmup_steps
+                        for m in config.multistep_milestones
+                        if m > config.warmup_steps
+                    ]
+                    if adjusted_milestones:
+                        scheduler = optim.lr_scheduler.MultiStepLR(
+                            optimizer,
+                            milestones=adjusted_milestones,
+                            gamma=config.multistep_gamma,
+                        )
+                elif config.scheduler_type == "exponential":
+                    scheduler = optim.lr_scheduler.ExponentialLR(
+                        optimizer, gamma=config.exponential_gamma
+                    )
+        elif (
+            config.use_warmup
+            and config.use_scheduler
+            and iter_num > config.warmup_steps
+            and scheduler
+        ):
+            # Use scheduler after warmup
+            scheduler.step()
+            current_lr = optimizer.param_groups[0]["lr"]
+        elif not config.use_warmup and scheduler:
+            # Use scheduler from the beginning
+            scheduler.step()
+            current_lr = optimizer.param_groups[0]["lr"]
+        else:
+            current_lr = optimizer.param_groups[0]["lr"]
+
+        img_real, img_real_unnormed, label_real = next(train_real_iter)
+        img_real = img_real.cuda()
+        img_real_unnormed = img_real_unnormed.cuda()
+        label_real = label_real.cuda()
+
+        anomaly_log_data = {}
+
+        if config.anomaly_detection_mode:
+            img_fake, img_fake_unnormed, label_fake = next(train_fake_iter)
+            img_fake = img_fake.cuda()
+            img_fake_unnormed = img_fake_unnormed.cuda()
+            label_fake = label_fake.cuda()
+
+            input_data = torch.cat([img_real, img_fake], dim=0)
+            input_unnormed = torch.cat([img_real_unnormed, img_fake_unnormed], dim=0)
+            input_label = torch.cat([label_real, label_fake], dim=0)
+
+            features, classifier_out, num_blocks = net(
+                input_unnormed, input_data, current_iter=iter_num
+            )
+
+            center_loss_val, distances, compactness_loss, repulsion_loss = criterion[
+                "center"
+            ](features, input_label)
+
+            with torch.no_grad():
+                center_reg_value = 0.5 * torch.norm(criterion["center"].center[0]) ** 2
+
+            classification_loss = None
+
+            if config.use_hybrid_loss:
+                classification_loss = criterion["softmax"](classifier_out, input_label)
+                cls_loss = (
+                    config.compactness_weight * center_loss_val
+                    + config.classification_weight * classification_loss
+                )
+            else:
+                cls_loss = center_loss_val * config.center_loss_weight
+
+            cls_loss = cls_loss / accumulation_steps
+            cls_loss.backward()
+
+            model_grad_norm = torch.nn.utils.clip_grad_norm_(
+                net.dd.parameters(), float("inf")
+            )
+            center_grad_norm = torch.nn.utils.clip_grad_norm_(
+                criterion["center"].parameters(), float("inf")
+            )
+
+            if (iter_num + 1) % accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+                torch.cuda.empty_cache()
+
+            with torch.no_grad():
+                center = criterion["center"].center[0]
+                norm_before_clip = torch.norm(center).item()
+                if norm_before_clip > 5.0:
+                    criterion["center"].center[0].copy_(
+                        center * (5.0 / norm_before_clip)
+                    )
+
+            with torch.no_grad():
+                threshold = distances.median()
+                distance_preds = (distances > threshold).long()
+                correct = (distance_preds == input_label).float().sum()
+                acc = [correct * 100.0 / input_label.size(0)]
+
+            if config.use_wandb:
+                center_norm = torch.norm(criterion["center"].center[0]).item()
+                center_norm_before_clip = norm_before_clip
+                center_mean = criterion["center"].center[0].mean().item()
+                center_std = criterion["center"].center[0].std().item()
+
+                distance_std = distances.std().item()
+                distance_median = distances.median().item()
+                distance_percentile_95 = torch.quantile(distances, 0.95).item()
+
+                real_mask = input_label == 0
+                fake_mask = input_label == 1
+                real_distances = distances[real_mask]
+                fake_distances = distances[fake_mask]
+
+                anomaly_log_data = {
+                    "train/mean_distance": distances.mean().item(),
+                    "train/max_distance": distances.max().item(),
+                    "train/min_distance": distances.min().item(),
+                    "train/distance_std": distance_std,
+                    "train/distance_median": distance_median,
+                    "train/distance_p95": distance_percentile_95,
+                    "train/compactness_loss": compactness_loss.item(),
+                    "train/repulsion_loss": repulsion_loss.item(),
+                    "train/center_reg": center_reg_value.item(),
+                    "train/real_mean_distance": (
+                        real_distances.mean().item() if real_mask.sum() > 0 else 0.0
+                    ),
+                    "train/fake_mean_distance": (
+                        fake_distances.mean().item() if fake_mask.sum() > 0 else 0.0
+                    ),
+                    "train/separation": (
+                        (fake_distances.mean() - real_distances.mean()).item()
+                        if (real_mask.sum() > 0 and fake_mask.sum() > 0)
+                        else 0.0
+                    ),
+                    "train/center_norm": center_norm,
+                    "train/center_norm_before_clip": center_norm_before_clip,
+                    "train/center_clipped": (
+                        1.0 if center_norm_before_clip > 5.0 else 0.0
+                    ),
+                    "train/center_mean": center_mean,
+                    "train/center_std": center_std,
+                    "train/model_grad_norm": model_grad_norm.item(),
+                    "train/center_grad_norm": center_grad_norm.item(),
+                }
+
+                if config.use_hybrid_loss and classification_loss is not None:
+                    anomaly_log_data.update(
+                        {
+                            "train/center_loss_component": (
+                                center_loss_val * accumulation_steps
+                            ).item(),
+                            "train/classification_loss_component": classification_loss.item(),
+                        }
+                    )
+        else:
+            img_fake, img_fake_unnormed, label_fake = next(train_fake_iter)
+            img_fake = img_fake.cuda()
+            img_fake_unnormed = img_fake_unnormed.cuda()
+            label_fake = label_fake.cuda()
+
+            input_data = torch.cat([img_real, img_fake], dim=0)
+            input_unnormed = torch.cat([img_real_unnormed, img_fake_unnormed], dim=0)
+            input_label = torch.cat([label_real, label_fake], dim=0)
+
+            _, classifier_out, num_blocks = net(
+                input_unnormed, input_data, current_iter=iter_num
+            )
+
+            cls_loss = criterion["softmax"](classifier_out, input_label)
+            cls_loss = cls_loss / accumulation_steps
+            cls_loss.backward()
+
+            if (iter_num + 1) % accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+                torch.cuda.empty_cache()
+
+            acc = accuracy(classifier_out, input_label, topk=(1,))
+            anomaly_log_data = {}
+
+        classifer_top1.update(acc[0])
+
+        # Log training metrics to wandb every iteration
+        if config.use_wandb:
+            log_data = {
+                "train/loss": cls_loss.item() * accumulation_steps,  # Unscaled loss
+                "train/accuracy": acc[0].item(),
+                "train/learning_rate": current_lr,
+                "train/epoch": epoch
+                + (iter_num % config.iter_per_epoch) / config.iter_per_epoch,
+                "train/iteration": iter_num,
+            }
+            log_data.update(anomaly_log_data)
+
+            # Add scheduler phase info
+            if config.use_warmup:
+                if iter_num < config.warmup_steps:
+                    log_data["train/phase"] = "warmup"
+                    log_data["train/warmup_progress"] = iter_num / config.warmup_steps
+                else:
+                    log_data["train/phase"] = "main_training"
+            else:
+                log_data["train/phase"] = "main_training"
+
+            wandb.log(log_data)
+
+        log.write_evaluations(
+            epoch, iter_num, aucs, best_aucs, classifer_top1.avg, per_iteration=True
+        )
+
+        if iter_num != 0 and epoch >= 1:  # Start validation from epoch 1
+            # Dynamic validation frequency
+            if epoch <= 100:
+                should_validate = (epoch % 10 == 0) and (
+                    iter_num % config.iter_per_epoch == 0
+                )
+            else:
+                should_validate = (epoch % 5 == 0) and (
+                    iter_num % config.iter_per_epoch == 0
+                )
+
+            if should_validate:
+
+                anomaly_center = (
+                    criterion["center"].get_center(0)
+                    if config.anomaly_detection_mode
+                    else None
+                )
+                aucs, distance_stats_list = eval_multiple_dataset(
+                    val_dataloader, net, anomaly_center=anomaly_center
+                )
+
+                # Log validation metrics to wandb
+                if config.use_wandb:
+                    val_log_data = {
+                        "val/auc_mixed": aucs[0],
+                        "val/epoch": epoch,
+                        "val/iteration": iter_num,
+                    }
+                    # Protocol-specific metric logging
+                    if config.protocol == "FFHQ_SG123":
+                        # FFHQ only has Mixed_Val (aucs[0]) and DF which is actually fake val (aucs[1])
+                        if len(aucs) > 1:
+                            val_log_data["val/auc_fake"] = aucs[1]
+                    else:
+                        # FF++ protocols have DF, F2F, FSW, NT
+                        if len(aucs) > 1:
+                            val_log_data["val/auc_df"] = aucs[1]
+                        if len(aucs) > 2:
+                            val_log_data["val/auc_f2f"] = aucs[2]
+                        if len(aucs) > 3:
+                            val_log_data["val/auc_fsw"] = aucs[3]
+                        if len(aucs) > 4:
+                            val_log_data["val/auc_nt"] = aucs[4]
+
+                    if (
+                        config.anomaly_detection_mode
+                        and distance_stats_list[0] is not None
+                    ):
+                        mixed_stats = distance_stats_list[0]
+                        if (
+                            len(mixed_stats["real_distances"]) > 0
+                            and len(mixed_stats["fake_distances"]) > 0
+                        ):
+                            real_mean = np.mean(mixed_stats["real_distances"])
+                            fake_mean = np.mean(mixed_stats["fake_distances"])
+                            real_std = np.std(mixed_stats["real_distances"])
+                            fake_std = np.std(mixed_stats["fake_distances"])
+                            separation = fake_mean - real_mean
+
+                            val_log_data.update(
+                                {
+                                    "val/real_mean_distance": real_mean,
+                                    "val/fake_mean_distance": fake_mean,
+                                    "val/real_std_distance": real_std,
+                                    "val/fake_std_distance": fake_std,
+                                    "val/distance_separation": separation,
+                                    "val/separation_ratio": (
+                                        fake_mean / real_mean if real_mean > 0 else 0
+                                    ),
+                                }
+                            )
+
+                    wandb.log(val_log_data)
+
+                # Check for improvements and early stopping
+                improved = False
+                num_metrics = min(len(aucs), len(best_aucs))
+                for i in range(num_metrics):
+                    is_best_AUC[i] = False
+                    if aucs[i] > best_aucs[i]:
+                        best_aucs[i] = aucs[i]
+                        is_best_AUC[i] = True
+                        improved = True
+
+                # Early stopping based on mixed AUC (first metric)
+                if aucs[0] > best_mixed_auc:
+                    best_mixed_auc = aucs[0]
+                    patience_counter = 0
+                else:
+                    patience_counter += 1
+
+                # Log best metrics to wandb
+                if config.use_wandb:
+                    best_log_data = {
+                        "val/best_auc_mixed": best_aucs[0],
+                        "train/patience_counter": patience_counter,
+                    }
+                    if config.protocol == "FFHQ_SG123":
+                        if len(best_aucs) > 1:
+                            best_log_data["val/best_auc_fake"] = best_aucs[1]
+                    else:
+                        if len(best_aucs) > 1:
+                            best_log_data["val/best_auc_df"] = best_aucs[1]
+                        if len(best_aucs) > 2:
+                            best_log_data["val/best_auc_f2f"] = best_aucs[2]
+                        if len(best_aucs) > 3:
+                            best_log_data["val/best_auc_fsw"] = best_aucs[3]
+                        if len(best_aucs) > 4:
+                            best_log_data["val/best_auc_nt"] = best_aucs[4]
+                    wandb.log(best_log_data)
+
+                # Save only best models
+                if improved:
+                    save_list = [epoch, aucs, best_aucs]
+                    save_checkpoint(
+                        save_list, is_best_AUC, net, timenow + "_" + runhash, criterion
+                    )
+
+                    # Log checkpoint saving to wandb
+                    if config.use_wandb:
+                        for i, is_best in enumerate(is_best_AUC):
+                            if is_best:
+                                if config.protocol == "FFHQ_SG123":
+                                    dataset_names = ["Mixed", "Fake"]
+                                else:
+                                    dataset_names = ["Mixed", "DF", "F2F", "FSW", "NT"]
+                                if i < len(dataset_names):
+                                    wandb.log(
+                                        {f"checkpoint/best_{dataset_names[i]}_saved": epoch}
+                                    )
+
+                log.write_evaluations(
+                    epoch,
+                    iter_num,
+                    aucs,
+                    best_aucs,
+                    classifer_top1.avg,
+                    per_iteration=False,
+                )
+                log.write("\n")
+                time.sleep(0.01)
+
+                # Clear cache after evaluation
+                torch.cuda.empty_cache()
+
+                # Early stopping check
+                if patience_counter >= patience:
+                    print(
+                        f"Early stopping triggered after {patience} validation rounds without improvement"
+                    )
+                    if config.use_wandb:
+                        wandb.log(
+                            {"train/early_stopped": True, "train/final_epoch": epoch}
+                        )
+                    break
+
+    # Finish wandb run
+    if config.use_wandb:
+        wandb.finish()
+
+
+if __name__ == "__main__":
+    train()

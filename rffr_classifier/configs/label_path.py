@@ -1,0 +1,386 @@
+def get_label_path(protocol):
+
+    # This works as an example. Specify your own path of the dataset.
+    if protocol == "F2F_All":
+        real_label_path = ["ff_270/train/real_train_label.json"]
+        fake_label_path = ["ff_270/train/f2f_train_label.json"]
+        val_label_path = [
+            "Faceforensics/excludes_hq/real_val_label.json",
+            "Faceforensics/excludes_hq/df_val_label.json",
+            "Faceforensics/excludes_hq/f2f_val_label.json",
+            "Faceforensics/excludes_hq/fsw_val_label.json",
+            "Faceforensics/excludes_hq/nt_val_label.json",
+        ]
+        test_label_path = [
+            "Faceforensics/excludes_hq/df_test_label.json",
+            "Faceforensics/excludes_hq/f2f_test_label.json",
+            "Faceforensics/excludes_hq/fsw_test_label.json",
+            "Faceforensics/excludes_hq/nt_test_label.json",
+            "Faceforensics/excludes_hq/fs_test_label.json",
+        ]
+        # Add real test set for proper evaluation
+        real_test_label_path = ["Faceforensics/excludes_hq/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+            "Best Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+
+    elif protocol == "F2F_All_1Video100F":
+        real_label_path = ["ff_270/train/real_train_label.json"]
+        fake_label_path = ["ff_270/train/f2f_train_label_1video_100frames.json"]
+        val_label_path = [
+            "Faceforensics/excludes_hq/real_val_label.json",
+            "Faceforensics/excludes_hq/df_val_label.json",
+            "Faceforensics/excludes_hq/f2f_val_label.json",
+            "Faceforensics/excludes_hq/fsw_val_label.json",
+            "Faceforensics/excludes_hq/nt_val_label.json",
+        ]
+        test_label_path = [
+            "Faceforensics/excludes_hq/df_test_label.json",
+            "Faceforensics/excludes_hq/f2f_test_label.json",
+            "Faceforensics/excludes_hq/fsw_test_label.json",
+            "Faceforensics/excludes_hq/nt_test_label.json",
+            "Faceforensics/excludes_hq/fs_test_label.json",
+        ]
+        real_test_label_path = ["Faceforensics/excludes_hq/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+            "Best Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+    elif protocol == "DF_All":
+        real_label_path = ["ff_270/train/real_train_label.json"]
+        fake_label_path = ["ff_270/train/df_train_label.json"]
+        val_label_path = [
+            "Faceforensics/excludes_hq/real_val_label.json",
+            "Faceforensics/excludes_hq/df_val_label.json",
+            "Faceforensics/excludes_hq/f2f_val_label.json",
+            "Faceforensics/excludes_hq/fsw_val_label.json",
+            "Faceforensics/excludes_hq/nt_val_label.json",
+            "Faceforensics/excludes_hq/fs_val_label.json",
+        ]
+        test_label_path = [
+            "Faceforensics/excludes_hq/df_test_label.json",
+            "Faceforensics/excludes_hq/f2f_test_label.json",
+            "Faceforensics/excludes_hq/fsw_test_label.json",
+            "Faceforensics/excludes_hq/nt_test_label.json",
+            "Faceforensics/excludes_hq/fs_test_label.json",
+        ]
+        real_test_label_path = ["Faceforensics/excludes_hq/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+            "Best Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+    elif protocol == "Mixed_All":
+        real_label_path = ["ff_270/train/real_train_label.json"]
+        fake_label_path = ["ff_270/train/mixed_fake_train_label.json"]
+        val_label_path = [
+            "Faceforensics/excludes_hq/real_val_label.json",
+            "Faceforensics/excludes_hq/df_val_label.json",
+            "Faceforensics/excludes_hq/f2f_val_label.json",
+            "Faceforensics/excludes_hq/fsw_val_label.json",
+            "Faceforensics/excludes_hq/nt_val_label.json",
+            "Faceforensics/excludes_hq/fs_val_label.json",
+        ]
+        test_label_path = [
+            "Faceforensics/excludes_hq/df_test_label.json",
+            "Faceforensics/excludes_hq/f2f_test_label.json",
+            "Faceforensics/excludes_hq/fsw_test_label.json",
+            "Faceforensics/excludes_hq/nt_test_label.json",
+            "Faceforensics/excludes_hq/fs_test_label.json",
+        ]
+        real_test_label_path = ["Faceforensics/excludes_hq/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+            "Best Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+    elif protocol == "FSW_All":
+        real_label_path = ["ff_270/train/real_train_label.json"]
+        fake_label_path = ["ff_270/train/fsw_train_label.json"]
+        val_label_path = [
+            "Faceforensics/excludes_hq/real_val_label.json",
+            "Faceforensics/excludes_hq/df_val_label.json",
+            "Faceforensics/excludes_hq/f2f_val_label.json",
+            "Faceforensics/excludes_hq/fsw_val_label.json",
+            "Faceforensics/excludes_hq/nt_val_label.json",
+            "Faceforensics/excludes_hq/fs_val_label.json",
+        ]
+        test_label_path = [
+            "Faceforensics/excludes_hq/df_test_label.json",
+            "Faceforensics/excludes_hq/f2f_test_label.json",
+            "Faceforensics/excludes_hq/fsw_test_label.json",
+            "Faceforensics/excludes_hq/nt_test_label.json",
+            "Faceforensics/excludes_hq/fs_test_label.json",
+        ]
+        real_test_label_path = ["Faceforensics/excludes_hq/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+            "Best Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+    elif protocol == "NT_All":
+        real_label_path = ["ff_270/train/real_train_label.json"]
+        fake_label_path = ["ff_270/train/nt_train_label.json"]
+        val_label_path = [
+            "Faceforensics/excludes_hq/real_val_label.json",
+            "Faceforensics/excludes_hq/df_val_label.json",
+            "Faceforensics/excludes_hq/f2f_val_label.json",
+            "Faceforensics/excludes_hq/fsw_val_label.json",
+            "Faceforensics/excludes_hq/nt_val_label.json",
+            "Faceforensics/excludes_hq/fs_val_label.json",
+        ]
+        test_label_path = [
+            "Faceforensics/excludes_hq/df_test_label.json",
+            "Faceforensics/excludes_hq/f2f_test_label.json",
+            "Faceforensics/excludes_hq/fsw_test_label.json",
+            "Faceforensics/excludes_hq/nt_test_label.json",
+            "Faceforensics/excludes_hq/fs_test_label.json",
+        ]
+        real_test_label_path = ["Faceforensics/excludes_hq/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+            "Best Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+    elif protocol == "FS_All":
+        real_label_path = ["ff_270/train/real_train_label.json"]
+        fake_label_path = ["ff_270/train/fs_train_label.json"]
+        val_label_path = [
+            "Faceforensics/excludes_hq/real_val_label.json",
+            "Faceforensics/excludes_hq/df_val_label.json",
+            "Faceforensics/excludes_hq/f2f_val_label.json",
+            "Faceforensics/excludes_hq/fsw_val_label.json",
+            "Faceforensics/excludes_hq/nt_val_label.json",
+            "Faceforensics/excludes_hq/fs_val_label.json",
+        ]
+        test_label_path = [
+            "Faceforensics/excludes_hq/df_test_label.json",
+            "Faceforensics/excludes_hq/f2f_test_label.json",
+            "Faceforensics/excludes_hq/fsw_test_label.json",
+            "Faceforensics/excludes_hq/nt_test_label.json",
+            "Faceforensics/excludes_hq/fs_test_label.json",
+        ]
+        real_test_label_path = ["Faceforensics/excludes_hq/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+            "Best Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+    elif (
+        protocol.endswith("_Fake5")
+        or protocol.endswith("_Fake3")
+        or protocol.endswith("_Fake7")
+        or protocol.endswith("_Fake1")
+        or protocol.endswith("_Fake100")
+    ):
+        frame_count = protocol.split("_Fake")[-1]
+        base_protocol = protocol.replace(f"_Fake{frame_count}", "")
+        suffix = f"fake{frame_count}"
+
+        real_label_path = ["ff_270/train/real_train_label.json"]
+        # real_label_path = [f"ff_270_{suffix}/train/real_train_label.json"]
+
+        if base_protocol == "F2F_All":
+            fake_label_path = [f"ff_270_{suffix}/train/f2f_train_label.json"]
+        elif base_protocol == "DF_All":
+            fake_label_path = [f"ff_270_{suffix}/train/df_train_label.json"]
+        elif base_protocol == "FSW_All":
+            fake_label_path = [f"ff_270_{suffix}/train/fsw_train_label.json"]
+        elif base_protocol == "NT_All":
+            fake_label_path = [f"ff_270_{suffix}/train/nt_train_label.json"]
+        elif base_protocol == "FS_All":
+            fake_label_path = [f"ff_270_{suffix}/train/fs_train_label.json"]
+        elif base_protocol == "Mixed_All":
+            fake_label_path = [f"ff_270_{suffix}/train/mixed_fake_train_label.json"]
+        else:
+            raise ValueError(f"Unknown base protocol: {base_protocol}")
+
+        val_label_path = [
+            "Faceforensics/excludes_hq/real_val_label.json",
+            "Faceforensics/excludes_hq/df_val_label.json",
+            "Faceforensics/excludes_hq/f2f_val_label.json",
+            "Faceforensics/excludes_hq/fsw_val_label.json",
+            "Faceforensics/excludes_hq/nt_val_label.json",
+            # "Faceforensics/excludes_hq/fs_val_label.json",
+        ]
+        test_label_path = [
+            "Faceforensics/excludes_hq_fake100/df_test_label.json",
+            "Faceforensics/excludes_hq_fake100/f2f_test_label.json",
+            "Faceforensics/excludes_hq_fake100/fsw_test_label.json",
+            "Faceforensics/excludes_hq_fake100/nt_test_label.json",
+            "Faceforensics/excludes_hq_fake100/fs_test_label.json",
+        ]
+        real_test_label_path = [
+            "Faceforensics/excludes_hq_fake100/real_test_label.json"
+            # "Faceforensics/excludes_hq/real_test_label.json"
+        ]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+            "Best Val AUC": ["Mixed_Val", "Real", "DF", "F2F", "FSW", "NT", "FS"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+    elif protocol == "FFHQ_SG123":
+        # FFHQ Stage 2: Train on StyleGAN 1/2/3, test OOD on StyleGAN-XL and Stable Diffusion
+        real_label_path = ["ffhq_classifier_FFHQ_SG123_STAGE2/train/real_train_label.json"]
+        fake_label_path = ["ffhq_classifier_FFHQ_SG123_STAGE2/train/fake_train_sg123_label.json"]
+        val_label_path = [
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/real_val_1k_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/fake_val_ood_1k_label.json",  # OOD: StyleGAN-XL + SD1.4 + SD2.1,
+        ]
+        # In-distribution test (same generators as training)
+        test_label_path = [
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/stylegan1_test_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/stylegan2_test_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/stylegan3_test_label.json",
+            # OOD test (different generators)
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/styleganxl_test_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/sdv1_4_test_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/sdv2_1_test_label.json",
+        ]
+        real_test_label_path = ["ffhq_classifier_FFHQ_SG123_STAGE2/train/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "SG123_Val"],
+            "Test AUC": ["Real", "SG1", "SG2", "SG3", "SG_XL", "SDv1.4", "SDv2.1"],
+            "Best Val AUC": ["Mixed_Val"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+    elif protocol == "FFHQ_SG2":
+        # FFHQ Stage 2: Train on StyleGAN 2 ONLY, test OOD on other generators
+        real_label_path = ["ffhq_classifier_FFHQ_SG123_STAGE2/train/real_train_label.json"]
+        fake_label_path = ["ffhq_classifier_FFHQ_SG123_STAGE2/train/fake_train_sg2_label.json"]
+        val_label_path = [
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/real_val_1k_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/fake_val_ood_1k_label.json",  # OOD: StyleGAN-XL + SD1.4 + SD2.1
+        ]
+        # Test on all generators (SG2 is in-distribution, others are OOD)
+        test_label_path = [
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/stylegan1_test_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/stylegan2_test_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/stylegan3_test_label.json",
+            # OOD test (different generators)
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/styleganxl_test_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/sdv1_4_test_label.json",
+            "ffhq_classifier_FFHQ_SG123_STAGE2/train/sdv2_1_test_label.json",
+        ]
+        real_test_label_path = ["ffhq_classifier_FFHQ_SG123_STAGE2/train/real_test_label.json"]
+
+        metrics = {
+            "Train": ["Loss"],
+            "Val AUC": ["Mixed_Val", "Real", "SG2_Val"],
+            "Test AUC": ["Real", "SG1", "SG2", "SG3", "SG_XL", "SDv1.4", "SDv2.1"],
+            "Best Val AUC": ["Mixed_Val"],
+        }
+
+        return (
+            real_label_path,
+            fake_label_path,
+            val_label_path,
+            test_label_path,
+            metrics,
+            real_test_label_path,
+        )
+
+
+    else:
+        raise ValueError(f"Unknown protocol: {protocol}")
