@@ -273,6 +273,23 @@ def parse_cli_overrides(args: list) -> dict:
     Returns:
         Dictionary with override values
     """
+    # Keys that should always be kept as strings (no type conversion)
+    STRING_KEYS = {
+        'gpu.devices',
+        'paths.resume_from',
+        'paths.pretrained',
+        'paths.checkpoint',
+        'paths.best_model',
+        'paths.data_label_base',
+        'paths.forgerynet_index',
+        'dataset.custom_path',
+        'dataset.label_path',
+        'logging.wandb.entity',
+        'logging.wandb.run_name',
+        'metadata.comment',
+        'metadata.experiment_name',
+    }
+    
     overrides = {}
     i = 0
     
@@ -288,8 +305,12 @@ def parse_cli_overrides(args: list) -> dict:
                 i += 2
                 continue
             
+            # Check if this key should remain as string
+            if key in STRING_KEYS:
+                # Keep as string, no type conversion
+                pass
             # Try to convert value to appropriate type
-            if value.lower() == 'true':
+            elif value.lower() == 'true':
                 value = True
             elif value.lower() == 'false':
                 value = False
