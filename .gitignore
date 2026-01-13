@@ -43,6 +43,7 @@ rffr_classifier/checkpoint/
 rffr_generative/checkpoint/
 checkpoints/
 rffr_generative/logs/
+rffr_generative/logs*.txt
 rffr_classifier/logs/
 logs/
 *.log
