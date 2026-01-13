@@ -1,0 +1,30 @@
+# MAE-VAE Training on FFHQ - Stage 1 (Generative)
+# Training MAE-VAE on real FFHQ images for representation learning
+
+metadata:
+  experiment_name: "mae_vae_ffhq_stage1"
+  comment: "MAE-VAE Stage 1: Generative training on FFHQ real images"
+
+model:
+  generator_type: "mae_vae"
+  mae:
+    freeze_encoder: false
+  vae:
+    latent_dim: 768
+    beta: 0.0001
+    kl_warmup_steps: 5000
+    bottleneck_type: "simple"
+
+training:
+  batch_size: 40
+  gradient_accumulation_steps: 10
+
+dataset:
+  name: "ffhq"
+  split: "train"
+  type: "real"
+
+logging:
+  wandb:
+    tags: ["mae_vae", "ffhq", "stage1", "generative"]
+    notes: "Stage 1 generative training: Learning representations from real FFHQ images"

@@ -11,12 +11,12 @@ import json
 import random
 import hashlib
 import numpy as np
-from configs.config import config
+import sys
+import argparse
 from datetime import datetime
 import time
 from timeit import default_timer as timer
 
-import os
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -36,17 +36,12 @@ except ImportError:
     WANDB_AVAILABLE = False
     print("[Warning] WandB not installed. Install with: pip install wandb")
 
-random.seed(config.seed)
-np.random.seed(config.seed)
-torch.manual_seed(config.seed)
-torch.cuda.manual_seed_all(config.seed)
-torch.cuda.manual_seed(config.seed)
-os.environ["CUDA_VISIBLE_DEVICES"] = config.gpus
-torch.backends.cudnn.benchmark = False
-torch.backends.cudnn.deterministic = True
+# Import YAML config loader
+from configs.config_loader import load_config, save_config_snapshot
 
 
-def train():
+def train(config):
+    """Main training function that accepts a config object"""
 
     mkdirs()
 
@@ -54,11 +49,11 @@ def train():
     try:
         import shutil
 
-        stat = shutil.disk_usage(config.checkpoint_path)
+        stat = shutil.disk_usage(config.paths.checkpoint)
         free_gb = stat.free / (1024**3)
         total_gb = stat.total / (1024**3)
         used_gb = stat.used / (1024**3)
-        print(f"[Pre-flight] Checkpoint directory: {config.checkpoint_path}")
+        print(f"[Pre-flight] Checkpoint directory: {config.paths.checkpoint}")
         print(
             f"[Pre-flight] Disk space - Total: {total_gb:.2f} GB, Used: {used_gb:.2f} GB, Free: {free_gb:.2f} GB"
         )
@@ -77,19 +72,19 @@ def train():
     timenow = datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     runhash = hashlib.sha1()
     runhash.update(timenow.encode("utf-8"))
-    runhash.update(config.comment.encode("utf-8"))
+    runhash.update(config.metadata.comment.encode("utf-8"))
     runhash = runhash.hexdigest()[:6]
 
     save_code(timenow, runhash)
 
     # Validate dataset path
     print("\n[Dataset] Validating dataset configuration...")
-    print(f"[Dataset] Dataset name: {config.dataset_name}")
-    print(f"[Dataset] Dataset split: {config.dataset_split}")
-    print(f"[Dataset] Dataset type: {config.dataset_type}")
-    print(f"[Dataset] Dataset path: {config.real_label_path}")
+    print(f"[Dataset] Dataset name: {config.dataset.name}")
+    print(f"[Dataset] Dataset split: {config.dataset.split}")
+    print(f"[Dataset] Dataset type: {config.dataset.type}")
+    print(f"[Dataset] Dataset path: {config.dataset.label_path}")
     
-    is_valid, error_msg, sample_count = validate_dataset_path(config.real_label_path)
+    is_valid, error_msg, sample_count = validate_dataset_path(config.dataset.label_path)
     
     if not is_valid:
         print(f"\n❌ [ERROR] Dataset validation failed: {error_msg}")
@@ -103,7 +98,7 @@ def train():
     
     print(f"✓ [Dataset] Validation passed: {sample_count:,} samples found")
 
-    with open(config.real_label_path, "r") as f:
+    with open(config.dataset.label_path, "r") as f:
         train_dict = json.load(f)
     train_dict = [item["path"] for item in train_dict]
     length = len(train_dict)
@@ -121,15 +116,15 @@ def train():
     print(f"[GPU Lock] Reserved memory on {len(gpu_lock_tensors)} GPUs")
 
 
-    if config.use_forgerynet:
+    if config.dataset.use_forgerynet:
         ff_dataset = Deepfake_Dataset(train_data, train=True)
         fn_dataset = ForgeryNetRotatingDataset(
-            config.forgerynet_index_path,
-            num_videos_per_epoch=config.forgerynet_num_videos,
-            frames_per_video=config.forgerynet_frames_per_video,
-            seed=config.seed,
-            categories=config.forgerynet_categories,
-            rotate=config.forgerynet_rotate_videos,
+            config.paths.forgerynet_index,
+            num_videos_per_epoch=config.dataset.forgerynet.num_videos,
+            frames_per_video=config.dataset.forgerynet.frames_per_video,
+            seed=config.metadata.seed,
+            categories=config.dataset.forgerynet.categories,
+            rotate=config.dataset.forgerynet.rotate_videos,
         )
         train_dataset = MixedDataset(ff_dataset, fn_dataset)
 
@@ -139,7 +134,7 @@ def train():
 
         real_dataloader = DataLoader(
             train_dataset,
-            batch_size=config.batch_size,
+            batch_size=config.training.batch_size,
             shuffle=True,
             num_workers=16,
             pin_memory=True,
@@ -153,7 +148,7 @@ def train():
 
         real_dataloader = DataLoader(
             ff_dataset,
-            batch_size=config.batch_size,
+            batch_size=config.training.batch_size,
             shuffle=True,
             num_workers=16,
             pin_memory=True,
@@ -164,7 +159,7 @@ def train():
 
     test_dataloader = DataLoader(
         Deepfake_Dataset(test_data, train=True),
-        batch_size=config.batch_size,
+        batch_size=config.training.batch_size,
         shuffle=True,
         num_workers=16,
             pin_memory=True,
@@ -174,7 +169,7 @@ def train():
     )
     test_dataloader = DataLoader(
         Deepfake_Dataset(test_data, train=True),
-        batch_size=config.batch_size,
+        batch_size=config.training.batch_size,
         shuffle=True,
         num_workers=16,
             pin_memory=True,
@@ -198,25 +193,25 @@ def train():
     eval_loss_logger = AverageMeter()
     kl_loss_logger = AverageMeter()
 
-    if config.generator_type == "mae_vae":
+    if config.model.generator_type == "mae_vae":
         net = mae_vae_vit_base_patch16(
-            vae_latent_dim=config.vae_latent_dim,
-            freeze_encoder=config.freeze_mae_encoder,
-            vae_bottleneck_type=config.vae_bottleneck_type,
+            vae_latent_dim=config.model.vae.latent_dim,
+            freeze_encoder=config.model.mae.freeze_encoder,
+            vae_bottleneck_type=config.model.vae.bottleneck_type,
         ).cuda()
         print(
-            f"Initialized MAE-VAE with latent_dim={config.vae_latent_dim}, bottleneck={config.vae_bottleneck_type}"
+            f"Initialized MAE-VAE with latent_dim={config.model.vae.latent_dim}, bottleneck={config.model.vae.bottleneck_type}"
         )
-    elif config.generator_type == "mae":
+    elif config.model.generator_type == "mae":
         net = mae_vit_base_patch16().cuda()
         print("Initialized MAE")
     else:
-        raise ValueError(f"Unknown generator_type: {config.generator_type}. Supported types: 'mae', 'mae_vae'")
+        raise ValueError(f"Unknown generator_type: {config.model.generator_type}. Supported types: 'mae', 'mae_vae'")
 
-    if config.in_pretrained is not None:
-        checkpoint = torch.load(config.in_pretrained)
+    if config.paths.pretrained is not None:
+        checkpoint = torch.load(config.paths.pretrained)
         net.load_state_dict(checkpoint["model"], strict=True)
-    if len(config.gpus) > 1:
+    if len(config.gpu.devices) > 1:
         net = torch.nn.DataParallel(net).cuda()
 
     # net = torch.compile(net)
@@ -224,19 +219,19 @@ def train():
     
     # Print training configuration
     print(f"\n[Training Config]")
-    print(f"  Batch size: {config.batch_size}")
-    print(f"  Gradient accumulation steps: {config.gradient_accumulation_steps}")
-    print(f"  Effective batch size: {config.batch_size * config.gradient_accumulation_steps}")
-    print(f"  Learning rate: {config.lr:.2e}")
-    print(f"  Weight decay: {config.weight_decay}")
+    print(f"  Batch size: {config.training.batch_size}")
+    print(f"  Gradient accumulation steps: {config.training.gradient_accumulation_steps}")
+    print(f"  Effective batch size: {config.training.batch_size * config.training.gradient_accumulation_steps}")
+    print(f"  Learning rate: {config.training.lr:.2e}")
+    print(f"  Weight decay: {config.training.weight_decay}")
 
-    param_groups = optim_factory.param_groups_weight_decay(net, config.weight_decay)
+    param_groups = optim_factory.param_groups_weight_decay(net, config.training.weight_decay)
     optimizer = optim.AdamW(
-        param_groups, lr=config.lr, betas=(config.beta1, config.beta2)
+        param_groups, lr=config.training.lr, betas=(config.training.beta1, config.training.beta2)
     )
 
-    if config.in_pretrained is None and config.my_pretrained is not None:
-        checkpoint = torch.load(config.my_pretrained, weights_only=False)
+    if config.paths.pretrained is None and config.paths.resume_from is not None:
+        checkpoint = torch.load(config.paths.resume_from, weights_only=False)
         missing_keys = net.load_state_dict(checkpoint["state_dict"], strict=False)
         if missing_keys.missing_keys:
             print(
@@ -247,82 +242,82 @@ def train():
         else:
             optimizer.load_state_dict(checkpoint["adam_dict"])
             epoch = checkpoint["epoch"]
-            start_iter = epoch * config.iter_per_epoch
+            start_iter = epoch * config.training.iter_per_epoch
 
-    if config.enable_tensorboard:
-        tblogger = SummaryWriter(comment=config.comment)
+    if config.logging.tensorboard.enabled:
+        tblogger = SummaryWriter(comment=config.metadata.comment)
     
     # Initialize WandB
-    if config.enable_wandb and WANDB_AVAILABLE:
+    if config.logging.wandb.enabled and WANDB_AVAILABLE:
         # Prepare wandb config
         wandb_config = {
             # Model architecture
-            "generator_type": config.generator_type,
-            "mae_mask_ratio": config.mae_mask_ratio,
-            "mae_patch_size": config.mae_patch_size,
+            "generator_type": config.model.generator_type,
+            "mae_mask_ratio": config.model.mae.mask_ratio,
+            "mae_patch_size": config.model.mae.patch_size,
             
             # Training hyperparameters
-            "batch_size": config.batch_size,
-            "gradient_accumulation_steps": config.gradient_accumulation_steps,
-            "effective_batch_size": config.batch_size * config.gradient_accumulation_steps,
-            "lr": config.lr,
-            "weight_decay": config.weight_decay,
-            "max_iter": config.max_iter,
-            "iter_per_epoch": config.iter_per_epoch,
-            "use_lr_scheduling": config.use_lr_scheduling,
-            "lr_warmup": config.lr_warmup,
+            "batch_size": config.training.batch_size,
+            "gradient_accumulation_steps": config.training.gradient_accumulation_steps,
+            "effective_batch_size": config.training.batch_size * config.training.gradient_accumulation_steps,
+            "lr": config.training.lr,
+            "weight_decay": config.training.weight_decay,
+            "max_iter": config.training.max_iter,
+            "iter_per_epoch": config.training.iter_per_epoch,
+            "use_lr_scheduling": config.training.lr_scheduling.enabled,
+            "lr_warmup": config.training.lr_scheduling.warmup_steps,
             
             # Dataset
-            "dataset_name": config.dataset_name,
-            "dataset_split": config.dataset_split,
-            "dataset_type": config.dataset_type,
-            "use_forgerynet": config.use_forgerynet,
+            "dataset_name": config.dataset.name,
+            "dataset_split": config.dataset.split,
+            "dataset_type": config.dataset.type,
+            "use_forgerynet": config.dataset.use_forgerynet,
             
             # Random seed
-            "seed": config.seed,
+            "seed": config.metadata.seed,
         }
         
         # Add VAE-specific config if using MAE-VAE
-        if config.generator_type == "mae_vae":
+        if config.model.generator_type == "mae_vae":
             wandb_config.update({
-                "vae_latent_dim": config.vae_latent_dim,
-                "vae_beta": config.vae_beta,
-                "vae_kl_warmup_steps": config.vae_kl_warmup_steps,
-                "vae_bottleneck_type": config.vae_bottleneck_type,
-                "freeze_mae_encoder": config.freeze_mae_encoder,
+                "vae_latent_dim": config.model.vae.latent_dim,
+                "vae_beta": config.model.vae.beta,
+                "vae_kl_warmup_steps": config.model.vae.kl_warmup_steps,
+                "vae_bottleneck_type": config.model.vae.bottleneck_type,
+                "freeze_mae_encoder": config.model.mae.freeze_encoder,
             })
         
         # Auto-generate run name if not specified
-        run_name = config.wandb_run_name or f"{config.generator_type}_{config.dataset_name}_{timenow}_{runhash}"
+        run_name = config.logging.wandb.run_name or f"{config.model.generator_type}_{config.dataset.name}_{timenow}_{runhash}"
         
         # Initialize WandB
         wandb.init(
-            project=config.wandb_project,
-            entity=config.wandb_entity,
+            project=config.logging.wandb.project,
+            entity=config.logging.wandb.entity,
             name=run_name,
             config=wandb_config,
-            tags=config.wandb_tags or [config.generator_type, config.dataset_name],
-            notes=config.wandb_notes or config.comment,
+            tags=config.logging.wandb.tags or [config.model.generator_type, config.dataset.name],
+            notes=config.logging.wandb.notes or config.metadata.comment,
             resume="allow",  # Allow resuming if run exists
         )
         
         # Watch model for gradients and parameters
-        wandb.watch(net, log="gradients", log_freq=config.iter_per_epoch)
+        wandb.watch(net, log="gradients", log_freq=config.training.iter_per_epoch)
         
-        print(f"✓ [WandB] Initialized - Project: {config.wandb_project}, Run: {run_name}")
-    elif config.enable_wandb and not WANDB_AVAILABLE:
+        print(f"✓ [WandB] Initialized - Project: {config.logging.wandb.project}, Run: {run_name}")
+    elif config.logging.wandb.enabled and not WANDB_AVAILABLE:
         print("[Warning] WandB logging enabled in config but wandb not installed. Skipping WandB logging.")
 
     log = Logger()
     log.open(
-        config.logs + timenow + "_" + runhash + "_" + config.comment + ".txt", mode="a"
+        config.paths.logs + timenow + "_" + runhash + "_" + config.metadata.comment + ".txt", mode="a"
     )
     log.write(
         "\n-------------- [START %s] %s\n\n"
         % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "-------------------")
     )
-    log.write("Random seed: %d\n" % config.seed)
-    log.write("Comment: %s\n" % config.comment)
+    log.write("Random seed: %d\n" % config.metadata.seed)
+    log.write("Comment: %s\n" % config.metadata.comment)
     log.write("** start training target model! **\n")
     log.write("--------|----- Train -----|---- Best ----|---- Test ----|\n")
     log.write("  iter  |      loss       |     loss     |     loss     |\n")
@@ -334,8 +329,8 @@ def train():
         "softmax": nn.CrossEntropyLoss().cuda(),
     }
 
-    iter_per_epoch = config.iter_per_epoch  # iters that the model need to be tested
-    max_iter = config.max_iter
+    iter_per_epoch = config.training.iter_per_epoch  # iters that the model need to be tested
+    max_iter = config.training.max_iter
 
     train_real_iter = iter(real_dataloader)
     train_real_iters_per_epoch = len(train_real_iter)
@@ -343,31 +338,31 @@ def train():
     for iter_num in range(start_iter, max_iter + 1):
         if iter_num % train_real_iters_per_epoch == 0:
             train_real_iter = iter(real_dataloader)
-            if config.use_forgerynet and hasattr(real_dataloader.dataset, "set_epoch"):
+            if config.dataset.use_forgerynet and hasattr(real_dataloader.dataset, "set_epoch"):
                 real_dataloader.dataset.set_epoch(epoch)
         if iter_num != 0 and iter_num % iter_per_epoch == 0:
             epoch = epoch + 1
             loss_logger.reset()
 
         # Learning rate schedule
-        if config.use_lr_scheduling:
-            if iter_num < config.lr_warmup:
-                lr = config.lr * ((iter_num + 1) / config.lr_warmup)
+        if config.training.lr_scheduling.enabled:
+            if iter_num < config.training.lr_scheduling.warmup_steps:
+                lr = config.training.lr * ((iter_num + 1) / config.training.lr_scheduling.warmup_steps)
             else:
                 lr = (
-                    config.lr
+                    config.training.lr
                     * 0.5
                     * (
                         1
                         + np.cos(
                             np.pi
-                            * (iter_num - config.lr_warmup)
-                            / (config.max_iter - config.lr_warmup)
+                            * (iter_num - config.training.lr_scheduling.warmup_steps)
+                            / (config.training.max_iter - config.training.lr_scheduling.warmup_steps)
                         )
                     )
                 )
         else:
-            lr = config.lr
+            lr = config.training.lr
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
 
@@ -377,35 +372,35 @@ def train():
         img_real = img_real.cuda()
         input_data = img_real
 
-        if config.generator_type == "mae_vae":
-            if iter_num < config.vae_kl_warmup_steps:
-                beta = config.vae_beta * (iter_num / config.vae_kl_warmup_steps)
+        if config.model.generator_type == "mae_vae":
+            if iter_num < config.model.vae.kl_warmup_steps:
+                beta = config.model.vae.beta * (iter_num / config.model.vae.kl_warmup_steps)
             else:
-                beta = config.vae_beta
+                beta = config.model.vae.beta
 
             rec_loss, pred, mask, recon_component, kl_component = net(input_data, beta=beta)
             rec_loss = rec_loss.mean()
-        elif config.generator_type == "mae":
+        elif config.model.generator_type == "mae":
             rec_loss, pred, mask = net(input_data)
             rec_loss = rec_loss.mean()
         else:
-            raise ValueError(f"Unknown generator_type: {config.generator_type}")
+            raise ValueError(f"Unknown generator_type: {config.model.generator_type}")
 
         # Scale loss by gradient accumulation steps
-        scaled_loss = rec_loss / config.gradient_accumulation_steps
+        scaled_loss = rec_loss / config.training.gradient_accumulation_steps
         
         # Backward pass (accumulate gradients)
         scaled_loss.backward()
         
         # Only update weights every gradient_accumulation_steps iterations
-        if (iter_num + 1) % config.gradient_accumulation_steps == 0:
+        if (iter_num + 1) % config.training.gradient_accumulation_steps == 0:
             optimizer.step()
             optimizer.zero_grad()
             # Only log loss when optimizer actually updates (for fair comparison)
             loss_logger.update(rec_loss.item())
             
             # Log to WandB immediately after optimizer step (when loss is fresh)
-            if config.enable_wandb and WANDB_AVAILABLE:
+            if config.logging.wandb.enabled and WANDB_AVAILABLE:
                 wandb_metrics = {
                     "train/loss": rec_loss.item(),
                     "train/loss_avg": loss_logger.avg,
@@ -415,7 +410,7 @@ def train():
                 }
                 
                 # Add VAE-specific metrics
-                if config.generator_type == "mae_vae":
+                if config.model.generator_type == "mae_vae":
                     wandb_metrics["train/recon_loss"] = recon_component.mean().item()
                     wandb_metrics["train/kl_loss"] = kl_component.mean().item()
                     wandb_metrics["train/beta"] = beta
@@ -423,7 +418,7 @@ def train():
                 wandb.log(wandb_metrics, step=iter_num)
 
         # For MAE-VAE models, show individual loss components
-        if config.generator_type == "mae_vae":
+        if config.model.generator_type == "mae_vae":
             print("\r", end="", flush=True)
             print(
                 "  %4.1f | T:%6.4f | R:%6.4f | KL:%8.2f | b:%.4f | best:%6.4f | %s"
@@ -454,7 +449,7 @@ def train():
                 flush=True,
             )
 
-        if iter_num != 0 and (iter_num + 1) % config.iter_per_epoch == 0:
+        if iter_num != 0 and (iter_num + 1) % config.training.iter_per_epoch == 0:
 
             if loss_logger.avg < best_loss:
                 is_best_loss = True
@@ -472,12 +467,12 @@ def train():
             if (epoch + 1) % 25 == 0:
                 save_list = [epoch + 1, current_loss]
                 model_config = {
-                    "generator_type": config.generator_type,
+                    "generator_type": config.model.generator_type,
                 }
                 # Only save VAE-specific config if using MAE-VAE
-                if config.generator_type == "mae_vae":
-                    model_config["vae_latent_dim"] = config.vae_latent_dim
-                    model_config["vae_bottleneck_type"] = config.vae_bottleneck_type
+                if config.model.generator_type == "mae_vae":
+                    model_config["vae_latent_dim"] = config.model.vae.latent_dim
+                    model_config["vae_bottleneck_type"] = config.model.vae.bottleneck_type
                 save_checkpoint(save_list, net, optimizer, model_config=model_config)
 
             print("\r", end="", flush=True)
@@ -493,7 +488,7 @@ def train():
             )
             log.write("\n")
 
-            if config.enable_tensorboard:
+            if config.logging.tensorboard.enabled:
                 info = {
                     "Loss_train": loss_logger.avg,
                     "lowest_loss": best_loss,
@@ -503,7 +498,7 @@ def train():
                     tblogger.add_scalar(tag, value, epoch)
             
             # WandB epoch-level logging
-            if config.enable_wandb and WANDB_AVAILABLE:
+            if config.logging.wandb.enabled and WANDB_AVAILABLE:
                 epoch_metrics = {
                     "epoch/train_loss": loss_logger.avg,
                     "epoch/test_loss": eval_loss_logger.avg,
@@ -514,10 +509,42 @@ def train():
 
 
 if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='RFFR-MVAE Generative Training')
+    parser.add_argument('--config', type=str, default=None,
+                        help='Path to experiment config YAML (relative to configs/)')
+    args, unknown = parser.parse_known_args()
+    
+    # Load configuration from YAML
+    print("\n[Config] Loading configuration...")
+    config = load_config(
+        config_path=args.config,
+        cli_args=sys.argv[1:]
+    )
+    
+    # Print config summary
+    print(f"[Config] Experiment: {config.metadata.experiment_name}")
+    print(f"[Config] Generator: {config.model.generator_type}")
+    print(f"[Config] Dataset: {config.dataset.name}/{config.dataset.split}/{config.dataset.type}")
+    print(f"[Config] Batch size: {config.training.batch_size} x {config.training.gradient_accumulation_steps} = {config.training.effective_batch_size}")
+    print(f"[Config] Learning rate: {config.training.lr:.6f}\n")
+    
+    # Set random seeds
+    random.seed(config.metadata.seed)
+    np.random.seed(config.metadata.seed)
+    torch.manual_seed(config.metadata.seed)
+    torch.cuda.manual_seed_all(config.metadata.seed)
+    torch.cuda.manual_seed(config.metadata.seed)
+    
+    # Set GPU devices
+    os.environ["CUDA_VISIBLE_DEVICES"] = config.gpu.devices
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    
     try:
-        train()
+        train(config)
     finally:
         # Clean up WandB
-        if config.enable_wandb and WANDB_AVAILABLE:
+        if config.logging.wandb.enabled and WANDB_AVAILABLE:
             wandb.finish()
             print("\n[WandB] Run finished and logged successfully")

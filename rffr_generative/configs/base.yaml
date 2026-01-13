@@ -1,0 +1,127 @@
+# Base Configuration for RFFR-MVAE Generative Training
+# This file contains all default values for the generative model training
+
+metadata:
+  seed: 912
+  comment: "RFFR-MVAE Generative Training"
+  experiment_name: "base_experiment"
+
+model:
+  # Generator type: "mae" or "mae_vae"
+  generator_type: "mae"
+  
+  # MAE (Masked Autoencoder) Configuration
+  mae:
+    encoder_embed_dim: 768
+    encoder_depth: 12
+    encoder_num_heads: 12
+    decoder_embed_dim: 512
+    decoder_depth: 8
+    decoder_num_heads: 16
+    patch_size: 16
+    mask_ratio: 0.75
+    freeze_encoder: false
+  
+  # VAE Configuration (only used when generator_type="mae_vae")
+  vae:
+    latent_dim: 768
+    beta: 0.0001
+    kl_warmup_steps: 5000
+    bottleneck_type: "simple"  # "simple" or "sophisticated"
+
+training:
+  # Batch size and gradient accumulation
+  batch_size: 40
+  gradient_accumulation_steps: 10
+  # Effective batch size = batch_size * gradient_accumulation_steps = 400
+  
+  # Learning rate (will be computed: base_lr * (effective_batch_size / 256))
+  base_lr: 0.00015
+  weight_decay: 0.05
+  
+  # Adam optimizer parameters
+  beta1: 0.9
+  beta2: 0.95
+  
+  # Training duration
+  max_iter: 1000000
+  iter_per_epoch: 312
+  
+  # Learning rate scheduling
+  lr_scheduling:
+    enabled: true
+    warmup_steps: 5000
+
+dataset:
+  # Primary dataset selection
+  # Options: ff270, ff270_fake100, ffhq, forgerynet, dfd, celebdf, custom
+  name: "ff270"
+  
+  # Dataset split: train, val, or test
+  split: "train"
+  
+  # Dataset type: real, fake, mixed, df, f2f, fs, fsw, nt
+  type: "real"
+  
+  # Custom dataset path (only used when name="custom")
+  custom_path: null
+  
+  # Data quality and augmentation
+  lq: false  # Use low quality images
+  aug: false  # Enable data augmentation
+  
+  # ForgeryNet integration
+  use_forgerynet: false
+  forgerynet:
+    num_videos: 150000
+    frames_per_video: 1
+    rotate_videos: false
+    categories: ["16", "17", "18", "19"]  # Face swap, reenactment, synthesis, attribute manipulation
+  
+  # Dataset caching
+  caching:
+    enabled: false
+    cache_file: null
+    workers: 32
+
+paths:
+  # Data paths
+  data_label_base: "../data_label"
+  forgerynet_index: "../data_label/FN/train/forgerynet_video_index.json"
+  
+  # Model paths
+  checkpoint: "./checkpoints/${model.generator_type}_${dataset.name}"
+  best_model: "./checkpoints/${model.generator_type}_${dataset.name}_best"
+  pretrained: null  # Path to pretrained ImageNet weights
+  resume_from: null  # Path to resume training from checkpoint
+  
+  # Logging
+  logs: "./logs/"
+  
+  # Files to save in history for reproducibility
+  save_code:
+    - "configs/config_loader.py"
+    - "configs/base.yaml"
+    - "train.py"
+    - "models/model_mae.py"
+    - "models/model_mae_vae.py"
+    - "dataset.py"
+    - "dataset_utils.py"
+    - "utils.py"
+
+logging:
+  # TensorBoard logging
+  tensorboard:
+    enabled: true
+  
+  # WandB logging
+  wandb:
+    enabled: true
+    project: "RFFR-MVAE"
+    entity: null  # Set to your wandb username/team
+    run_name: null  # Auto-generated if null
+    tags: []  # e.g., ["mae_vae", "ffhq", "stage1"]
+    notes: ""
+
+gpu:
+  devices: "0,1"  # Comma-separated GPU IDs

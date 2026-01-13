@@ -1,0 +1,19 @@
+# MAE Training on FaceForensics++ (270 videos)
+# Masked Autoencoder for learning representations from real images
+
+metadata:
+  experiment_name: "mae_ff270"
+  comment: "MAE training on FF++ real images (270 videos)"
+
+model:
+  generator_type: "mae"
+
+dataset:
+  name: "ff270"
+  split: "train"
+  type: "real"
+
+logging:
+  wandb:
+    tags: ["mae", "ff270", "real"]
+    notes: "Baseline MAE training on FaceForensics++ dataset"
