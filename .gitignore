@@ -39,22 +39,34 @@ env/
 *.ipynb
 
 # Training outputs
-rffr_classifier/checkpoint/
-rffr_generative/checkpoint/
+classifier/checkpoint/
+generative/checkpoint/
 checkpoints/
-rffr_generative/logs/
-rffr_generative/logs*.txt
-rffr_classifier/logs/
+generative/logs/
+generative/logs*.txt
+classifier/logs/
 logs/
 *.log
 *.pth
 *.pth.tar
 *.ckpt
 
+# Test results
+test_results/
+test_results_*/
+generative/test_results/
+generative/test_results_*/
+classifier/test_results/
+classifier/test_results_*/
+
+# Images and visualization
+imgs/
+images/
+
 # WandB
 wandb/
-rffr_classifier/wandb/
-rffr_generative/wandb/
+classifier/wandb/
+generative/wandb/
 *.wandb
 
 # Tensorboard
