@@ -43,17 +43,25 @@ from configs.config_loader import load_config, save_config_snapshot
 def train(config):
     """Main training function that accepts a config object"""
 
+    print("\n[Setup] Creating directories...")
     mkdirs()
 
     print("\n[Pre-flight] Checking training environment...")
     try:
         import shutil
+        import os
 
-        stat = shutil.disk_usage(config.paths.checkpoint)
+        # Ensure checkpoint directory exists before checking disk usage
+        checkpoint_dir = config.paths.checkpoint
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
+            print(f"[Setup] Created checkpoint directory: {checkpoint_dir}")
+        
+        stat = shutil.disk_usage(checkpoint_dir)
         free_gb = stat.free / (1024**3)
         total_gb = stat.total / (1024**3)
         used_gb = stat.used / (1024**3)
-        print(f"[Pre-flight] Checkpoint directory: {config.paths.checkpoint}")
+        print(f"[Pre-flight] Checkpoint directory: {checkpoint_dir}")
         print(
             f"[Pre-flight] Disk space - Total: {total_gb:.2f} GB, Used: {used_gb:.2f} GB, Free: {free_gb:.2f} GB"
         )
