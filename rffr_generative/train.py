@@ -221,7 +221,7 @@ def train(config):
     print(f"\n[Training Config]")
     print(f"  Batch size: {config.training.batch_size}")
     print(f"  Gradient accumulation steps: {config.training.gradient_accumulation_steps}")
-    print(f"  Effective batch size: {config.training.batch_size * config.training.gradient_accumulation_steps}")
+    print(f"  Effective batch size: {config.training.effective_batch_size}")
     print(f"  Learning rate: {config.training.lr:.2e}")
     print(f"  Weight decay: {config.training.weight_decay}")
 
@@ -259,7 +259,7 @@ def train(config):
             # Training hyperparameters
             "batch_size": config.training.batch_size,
             "gradient_accumulation_steps": config.training.gradient_accumulation_steps,
-            "effective_batch_size": config.training.batch_size * config.training.gradient_accumulation_steps,
+            "effective_batch_size": config.training.effective_batch_size,
             "lr": config.training.lr,
             "weight_decay": config.training.weight_decay,
             "max_iter": config.training.max_iter,
