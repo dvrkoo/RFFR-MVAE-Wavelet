@@ -10,8 +10,10 @@ The RFFR-MVAE generative training now uses YAML-based configuration for flexibil
 # Use base configuration (default)
 python train.py
 
-# Use experiment configuration
+# Use experiment configuration (both formats work)
 python train.py --config experiments/mae_ff270.yaml
+# OR
+python train.py --config configs/experiments/mae_ff270.yaml
 
 # Override specific parameters
 python train.py --config experiments/mae_ff270.yaml \

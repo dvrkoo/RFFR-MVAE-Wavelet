@@ -22,8 +22,8 @@ def test_config_loading():
         print(f"✗ Failed to load base config: {e}")
         return False
     
-    # Test 2: Load experiment config
-    print("\n[Test 2] Loading mae_ff270 experiment config...")
+    # Test 2: Load experiment config (without configs/ prefix)
+    print("\n[Test 2a] Loading mae_ff270 experiment config (without prefix)...")
     try:
         config = load_config(config_path="experiments/mae_ff270.yaml")
         print("✓ Experiment config loaded successfully")
@@ -32,6 +32,15 @@ def test_config_loading():
         print(f"  - Dataset: {config.dataset.name}")
     except Exception as e:
         print(f"✗ Failed to load experiment config: {e}")
+        return False
+    
+    # Test 2b: Load experiment config (with configs/ prefix)
+    print("\n[Test 2b] Loading mae_ff270 experiment config (with configs/ prefix)...")
+    try:
+        config = load_config(config_path="configs/experiments/mae_ff270.yaml")
+        print("✓ Experiment config loaded successfully (both formats work)")
+    except Exception as e:
+        print(f"✗ Failed to load experiment config with prefix: {e}")
         return False
     
     # Test 3: Test CLI overrides

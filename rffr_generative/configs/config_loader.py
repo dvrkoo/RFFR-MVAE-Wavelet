@@ -350,8 +350,19 @@ def load_config(config_path: Optional[str] = None,
     # Load experiment config if provided
     if config_path is not None:
         exp_path = Path(config_path)
+        
+        # Handle different path formats:
+        # 1. Absolute path: /full/path/to/config.yaml
+        # 2. Relative to config dir: experiments/mae_ff270.yaml
+        # 3. Relative to working dir with configs/ prefix: configs/experiments/mae_ff270.yaml
         if not exp_path.is_absolute():
-            exp_path = config_dir / config_path
+            # If path starts with 'configs/', remove it since we're already in configs/
+            config_path_str = str(config_path)
+            if config_path_str.startswith('configs/'):
+                config_path_str = config_path_str[8:]  # Remove 'configs/' prefix
+                exp_path = config_dir / config_path_str
+            else:
+                exp_path = config_dir / config_path
         
         if not exp_path.exists():
             raise FileNotFoundError(f"Experiment config not found: {exp_path}")
