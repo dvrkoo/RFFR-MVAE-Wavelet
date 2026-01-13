@@ -464,16 +464,24 @@ def train(config):
                 rec_loss = rec_loss.mean().cpu().detach().numpy()
                 eval_loss_logger.update(rec_loss)
 
+            # Prepare model config for checkpoint saving
+            model_config = {
+                "generator_type": config.model.generator_type,
+            }
+            # Only save VAE-specific config if using MAE-VAE
+            if config.model.generator_type == "mae_vae":
+                model_config["vae_latent_dim"] = config.model.vae.latent_dim
+                model_config["vae_bottleneck_type"] = config.model.vae.bottleneck_type
+
+            # Save numbered checkpoint every 25 epochs
             if (epoch + 1) % 25 == 0:
                 save_list = [epoch + 1, current_loss]
-                model_config = {
-                    "generator_type": config.model.generator_type,
-                }
-                # Only save VAE-specific config if using MAE-VAE
-                if config.model.generator_type == "mae_vae":
-                    model_config["vae_latent_dim"] = config.model.vae.latent_dim
-                    model_config["vae_bottleneck_type"] = config.model.vae.bottleneck_type
-                save_checkpoint(save_list, net, optimizer, model_config=model_config)
+                numbered_filename = f"/checkpoint_epoch_{epoch + 1}.pth.tar"
+                save_checkpoint(save_list, net, optimizer, model_config=model_config, filename=numbered_filename, save_latest=True)
+            else:
+                # Save latest checkpoint every epoch
+                save_list = [epoch + 1, loss_logger.avg]
+                save_checkpoint(save_list, net, optimizer, model_config=model_config, filename="/checkpoint_latest.pth.tar", save_latest=False)
 
             print("\r", end="", flush=True)
             log.write(

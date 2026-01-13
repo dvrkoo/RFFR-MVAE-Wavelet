@@ -214,7 +214,7 @@ class Logger(object):
 
 
 def save_checkpoint(
-    save_list, model, optimizer, model_config=None, filename="_checkpoint.pth.tar"
+    save_list, model, optimizer, model_config=None, filename="_checkpoint.pth.tar", save_latest=True
 ):
     import time
 
@@ -224,6 +224,7 @@ def save_checkpoint(
         "epoch": epoch,
         "state_dict": model.state_dict(),
         "adam_dict": optimizer.state_dict(),
+        "loss": current_loss,
     }
 
     if model_config is not None:
@@ -231,20 +232,11 @@ def save_checkpoint(
 
     # Support both old (config.checkpoint_path) and new (config.paths.checkpoint) formats
     checkpoint_base = getattr(config, 'checkpoint_path', None) or getattr(config.paths, 'checkpoint', None)
-    best_model_base = getattr(config, 'best_model_path', None) or getattr(config.paths, 'best_model', None)
     
     if checkpoint_base is None:
         raise ValueError("Checkpoint path not found in config. Check config.paths.checkpoint or config.checkpoint_path")
     
     filepath = checkpoint_base + filename
-    best_filepath = (
-        best_model_base
-        + "/best_loss_"
-        + str(round(current_loss, 5))
-        + "_"
-        + str(epoch)
-        + ".pth.tar"
-    )
 
     estimated_size = sum(p.numel() * p.element_size() for p in model.parameters())
     estimated_size += sum(
@@ -315,14 +307,18 @@ def save_checkpoint(
                     raise
         return False
 
+    # Save the checkpoint (numbered or named)
     atomic_save(state, filepath)
 
-    try:
-        if os.path.exists(filepath):
-            shutil.copy(filepath, best_filepath)
-            print(f"[Checkpoint] Copied to best model: {best_filepath}")
-    except Exception as e:
-        print(f"[ERROR] Failed to copy to best model path: {e}")
+    # Also save as latest checkpoint if requested
+    if save_latest:
+        latest_filepath = checkpoint_base + "/checkpoint_latest.pth.tar"
+        try:
+            if os.path.exists(filepath):
+                shutil.copy(filepath, latest_filepath)
+                print(f"[Checkpoint] Copied to latest: {latest_filepath}")
+        except Exception as e:
+            print(f"[ERROR] Failed to copy to latest checkpoint: {e}")
 
 
 def zero_param_grad(params):
