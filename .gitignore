@@ -90,6 +90,13 @@ output_reconstruction_FF_FN/*
 history/
 *.bak
 *.backup
+*.backup_*
+*backup*.py
+*backup*.sh
+.backup*/
+
+# Local launch/test scripts
+*.sh
 
 # Markdown files (summaries, notes, docs) - EXCEPT README
 *.md
