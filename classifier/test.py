@@ -1,276 +1,281 @@
-import random
-import numpy as np
+#!/usr/bin/env python3
 import argparse
+import json
 import os
-import torch
+import random
+from datetime import datetime
+from pathlib import Path
 
+import numpy as np
+import torch
 from PIL import ImageFile
+from torch.utils.data import DataLoader
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-import json
 
-from tqdm import tqdm
-from configs.config import config
-from models.model_detector import RFFRL
 
-from utils.simple_evaluate import eval_one_dataset, save_bandit_analysis
-from utils.visualize_bandit import (
-    save_forgery_samples,
-    create_summary_visualization_new,
-)
-from torch.utils.data import DataLoader
-from utils.dataset import Deepfake_Dataset
+def load_configuration(config_path=None):
+    if config_path:
+        from configs.config_loader import load_config
+
+        cfg = load_config(config_path=config_path, flat_compat=True)
+    else:
+        from configs.config import config as cfg
+
+    import models.model_detector as model_detector
+    import models.model_mae as model_mae
+    import models.model_mae_vae as model_mae_vae
+    import utils.simple_evaluate as simple_evaluate
+    import utils.wavelet_utils as wavelet_utils
+
+    model_detector.config = cfg
+    model_mae.config = cfg
+    model_mae_vae.config = cfg
+    simple_evaluate.config = cfg
+    wavelet_utils.config = cfg
+    return cfg
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Test RFFR deepfake detection model")
+    parser = argparse.ArgumentParser(
+        description="Single RFFR classifier test entry point",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--config", type=str, default=None, help="YAML config path")
+    parser.add_argument("--checkpoint", type=str, default=None, help="Classifier checkpoint")
+    parser.add_argument("--checkpoint-dir", type=str, default="./checkpoint/rffr/best_model")
     parser.add_argument(
-        "--model-dir",
+        "--strategy",
         type=str,
-        default=None,
-        help='Specific model directory to use (e.g., "2025-09-17-16:57:52_5a7a45"). If not provided, uses latest.',
+        choices=["latest", "highest_auc", "mixed"],
+        default="highest_auc",
     )
     parser.add_argument(
-        "--model-file",
-        type=str,
+        "--datasets",
+        nargs="+",
         default=None,
-        help="Specific model file to use. If not provided, uses best AUC model from directory.",
+        help="Datasets from config.test_label_path to evaluate, e.g. DF F2F FSW NT DFD CelebDF Mixed",
     )
-    parser.add_argument(
-        "--no-visualizations",
-        action="store_true",
-        help="Skip generating visualization samples",
-    )
+    parser.add_argument("--fake-label", type=str, default=None, help="Custom fake label JSON")
+    parser.add_argument("--real-label", type=str, default=None, help="Custom real label JSON")
+    parser.add_argument("--dataset-name", type=str, default="Custom")
+    parser.add_argument("--samples", type=int, default=700)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--num-workers", type=int, default=4)
+    parser.add_argument("--gpu", type=str, default=None)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--output-dir", type=str, default="./test_results")
+    parser.add_argument("--save-json", action="store_true")
+    parser.add_argument("--list-checkpoints", action="store_true")
     return parser.parse_args()
 
 
-random.seed(config.seed)
-np.random.seed(config.seed)
-torch.manual_seed(config.seed)
-torch.cuda.manual_seed_all(config.seed)
-torch.cuda.manual_seed(config.seed)
-os.environ["CUDA_VISIBLE_DEVICES"] = config.gpus
-torch.backends.cudnn.benchmark = False
-torch.backends.cudnn.deterministic = True
-device = "cuda"
+def set_reproducibility(cfg, args):
+    seed = args.seed if args.seed is not None else cfg.seed
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed(seed)
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu if args.gpu else cfg.gpus
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
-import glob
 
-# This is a stand-alone test-file.
-# It loads in the deepfake detector (net.dd) and tests on the test set specified in "test_path".
+def load_json(path):
+    with open(path) as f:
+        return json.load(f)
 
-args = parse_args()
-net = RFFRL().cuda()
 
-# Model loading logic with command-line support
-best_model_dir = "./checkpoint/rffr/best_model/"
-paths = []
+def resolve_label_path(dataset_base, path):
+    label_path = Path(path)
+    if label_path.is_absolute():
+        return str(label_path)
+    return str(Path(dataset_base) / label_path)
 
-if args.model_file:
-    # Use specific model file provided
-    if os.path.exists(args.model_file):
-        paths = [args.model_file]
-        print(f"Using specified model file: {args.model_file}")
-    else:
-        print(f"Error: Specified model file does not exist: {args.model_file}")
-        exit(1)
-elif args.model_dir:
-    # Use specific model directory provided
-    target_dir = os.path.join(best_model_dir, args.model_dir)
-    if os.path.exists(target_dir):
-        model_pattern = os.path.join(target_dir, "*.pth.tar")
-        model_files = glob.glob(model_pattern)
 
-        if model_files:
-            # Use the Mixed AUC model (typically the best overall)
-            mixed_model = [f for f in model_files if "0__AUC" in f]
-            if mixed_model:
-                paths = [mixed_model[0]]
-                print(
-                    f"Using Mixed AUC model from specified directory: {mixed_model[0]}"
-                )
+def find_checkpoints(checkpoint_dir):
+    base = Path(checkpoint_dir)
+    if not base.exists():
+        return []
+    return sorted(base.rglob("*.pth.tar"), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def select_checkpoint(args):
+    if args.checkpoint:
+        checkpoint = Path(args.checkpoint)
+        if not checkpoint.exists():
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint}")
+        return checkpoint
+
+    checkpoints = find_checkpoints(args.checkpoint_dir)
+    if args.list_checkpoints:
+        for path in checkpoints:
+            print(path)
+        raise SystemExit(0)
+    if not checkpoints:
+        raise FileNotFoundError(f"No checkpoints found under {args.checkpoint_dir}")
+
+    if args.strategy == "latest":
+        return checkpoints[0]
+    if args.strategy == "mixed":
+        mixed = [p for p in checkpoints if "0__AUC" in p.name or "Mixed" in p.name]
+        return mixed[0] if mixed else checkpoints[0]
+
+    auc_checkpoints = [p for p in checkpoints if "AUC" in p.name]
+    if not auc_checkpoints:
+        return checkpoints[0]
+
+    def auc_value(path):
+        parts = path.name.replace(".pth.tar", "").split("_")
+        for i, part in enumerate(parts):
+            if part == "AUC" and i + 1 < len(parts):
+                try:
+                    return float(parts[i + 1])
+                except ValueError:
+                    return -1.0
+        return -1.0
+
+    return max(auc_checkpoints, key=auc_value)
+
+
+def load_model(checkpoint_path):
+    from models.model_detector import RFFRL
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = RFFRL().to(device)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+
+    state_dict = checkpoint.get("state_dict", checkpoint.get("model_state_dict", checkpoint))
+    try:
+        model.dd.load_state_dict(state_dict)
+    except RuntimeError:
+        remapped = {}
+        for key, value in state_dict.items():
+            if key.startswith("backbone_") or key.startswith("classifier"):
+                remapped[f"dd.{key}"] = value
             else:
-                # Fallback to any available model
-                paths = [model_files[0]]
-                print(
-                    f"Using available model from specified directory: {model_files[0]}"
-                )
-        else:
-            print(f"No model files found in specified directory: {target_dir}")
-            exit(1)
-    else:
-        print(f"Error: Specified model directory does not exist: {target_dir}")
-        exit(1)
-elif os.path.exists(best_model_dir):
-    # Automatically find the best model from the most recent training run
-    training_dirs = [
-        d
-        for d in os.listdir(best_model_dir)
-        if os.path.isdir(os.path.join(best_model_dir, d))
-    ]
-    if training_dirs:
-        # Sort by modification time to get the most recent
-        training_dirs.sort(
-            key=lambda x: os.path.getmtime(os.path.join(best_model_dir, x)),
-            reverse=True,
-        )
-        latest_dir = training_dirs[0]
-        print(f"Using latest training directory: {latest_dir}")
+                remapped[key] = value
+        model.load_state_dict(remapped, strict=False)
 
-        # Find all .pth.tar files in the latest directory
-        model_pattern = os.path.join(best_model_dir, latest_dir, "*.pth.tar")
-        model_files = glob.glob(model_pattern)
+    model.eval()
+    return model, checkpoint
 
-        if model_files:
-            # Use the Mixed AUC model (typically the best overall)
-            mixed_model = [f for f in model_files if "0__AUC" in f]
-            if mixed_model:
-                paths = [mixed_model[0]]
-                print(f"Using best Mixed AUC model: {mixed_model[0]}")
-            else:
-                # Fallback to any available model
-                paths = [model_files[0]]
-                print(f"Using available model: {model_files[0]}")
-        else:
-            print("No model files found in latest training directory")
-            paths = []
-    else:
-        print("No training directories found")
-        paths = []
-else:
-    print("Best model directory not found, using manual path")
-    paths = ["./checkpoint/rffr/best_model/2025-09-17-16:57:52_5a7a45/0__AUC_0.pth.tar"]
-for modelpath in paths:
-    if not modelpath:  # Skip empty paths
-        continue
 
-    checkpoint = torch.load(modelpath)
-    net.dd.load_state_dict(checkpoint["state_dict"])
+def balanced_dataset(fake_items, real_items, max_samples):
+    n = min(len(fake_items), len(real_items), max_samples)
+    fake_subset = random.sample(fake_items, n)
+    real_subset = random.sample(real_items, n)
+    items = real_subset + fake_subset
+    random.shuffle(items)
+    return items, len(real_subset), len(fake_subset)
 
-    # Load real test data for proper evaluation
-    test_real_dict = []
-    for real_test_dataset in config.real_test_label_path:
-        with open(config.dataset_base + real_test_dataset) as f:
-            test_real_dict += json.load(f)
 
-    print(f"Loaded {len(test_real_dict)} real test samples")
+def config_datasets(cfg, requested=None):
+    names = ["DF", "F2F", "FSW", "NT", "FS", "DFD", "CelebDF"]
+    entries = []
 
-    # Create balanced test sets using real test data
-    dataset_names = ["DF", "F2F", "FSW", "NT"]
-    random.seed(config.seed)  # Ensure reproducibility
+    real_default = []
+    for real_path in cfg.real_test_label_path:
+        real_default.extend(load_json(resolve_label_path(cfg.dataset_base, real_path)))
 
-    for i, test_path in enumerate(config.test_label_path):
-        test_json = open(config.dataset_base + test_path)
-        test_fake_dict = json.load(test_json)
+    fake_by_name = []
+    for i, fake_path in enumerate(cfg.test_label_path):
+        name = names[i] if i < len(names) else f"Dataset_{i + 1}"
+        fake_by_name.append((name, fake_path))
 
-        dataset_name = dataset_names[i] if i < len(dataset_names) else f"Dataset_{i+1}"
-        print(f"\nTest dataset: {test_path} ({dataset_name})")
+    if requested is None or "Mixed" in requested:
+        mixed_fake = []
+        for _, fake_path in fake_by_name[:4]:
+            mixed_fake.extend(load_json(resolve_label_path(cfg.dataset_base, fake_path)))
+        entries.append(("Mixed", mixed_fake, real_default))
 
-        # Create balanced test set using real test data
-        num_samples = min(
-            len(test_fake_dict), len(test_real_dict), 700
-        )  # Limit to reasonable size
-        test_fake_subset = random.sample(test_fake_dict, num_samples)
-        test_real_subset = random.sample(test_real_dict, num_samples)
+    for name, fake_path in fake_by_name:
+        if requested and name not in requested:
+            continue
+        real_items = real_default
+        specific_attr = f"{name.lower()}_real_test_label_path"
+        if hasattr(cfg, specific_attr):
+            real_items = load_json(resolve_label_path(cfg.dataset_base, getattr(cfg, specific_attr)))
+        fake_items = load_json(resolve_label_path(cfg.dataset_base, fake_path))
+        entries.append((name, fake_items, real_items))
 
-        balanced_test_dict = test_real_subset + test_fake_subset
-        random.shuffle(balanced_test_dict)
+    return entries
 
-        # Verify balance
-        real_count = sum(1 for item in balanced_test_dict if item["label"] == 0)
-        fake_count = sum(1 for item in balanced_test_dict if item["label"] == 1)
+
+def custom_dataset(cfg, args):
+    if not (args.fake_label and args.real_label):
+        return None
+    fake_items = load_json(resolve_label_path(cfg.dataset_base, args.fake_label))
+    real_items = load_json(resolve_label_path(cfg.dataset_base, args.real_label))
+    return [(args.dataset_name, fake_items, real_items)]
+
+
+def evaluate_dataset(name, fake_items, real_items, model, args):
+    from utils.dataset import Deepfake_Dataset
+    from utils.simple_evaluate import eval_one_dataset
+
+    items, real_count, fake_count = balanced_dataset(fake_items, real_items, args.samples)
+    print(f"{name}: {real_count} real + {fake_count} fake = {len(items)} total")
+
+    dataloader = DataLoader(
+        Deepfake_Dataset(items, train=False),
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True,
+    )
+    metrics, _ = eval_one_dataset(dataloader, model, name)
+    return metrics
+
+
+def main():
+    args = parse_args()
+    cfg = load_configuration(args.config)
+    set_reproducibility(cfg, args)
+
+    checkpoint_path = select_checkpoint(args)
+    print(f"Using checkpoint: {checkpoint_path}")
+    model, checkpoint = load_model(checkpoint_path)
+
+    datasets = custom_dataset(cfg, args)
+    if datasets is None:
+        datasets = config_datasets(cfg, args.datasets)
+    if not datasets:
+        raise RuntimeError("No datasets selected")
+
+    results = {}
+    for name, fake_items, real_items in datasets:
+        results[name] = evaluate_dataset(name, fake_items, real_items, model, args)
+
+    print("\nResults")
+    print("=" * 80)
+    for name, metrics in results.items():
         print(
-            f"Balanced test set: {real_count} real + {fake_count} fake = {len(balanced_test_dict)} total"
+            f"{name:<12} AUC={metrics['auc']:.4f} "
+            f"ACC={metrics['accuracy']:.4f} "
+            f"real={metrics['real_count']} fake={metrics['fake_count']}"
         )
 
-        test_dataloader = DataLoader(
-            Deepfake_Dataset(balanced_test_dict, train=False),
-            batch_size=16,
-            shuffle=False,
-        )
+    if args.save_json:
+        output_dir = Path(args.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        serializable_results = {
+            name: {key: float(value) if isinstance(value, np.floating) else value for key, value in metrics.items()}
+            for name, metrics in results.items()
+        }
+        output = {
+            "timestamp": datetime.now().isoformat(),
+            "checkpoint": str(checkpoint_path),
+            "epoch": checkpoint.get("epoch", "unknown") if isinstance(checkpoint, dict) else "unknown",
+            "datasets": list(serializable_results.keys()),
+            "results": serializable_results,
+        }
+        output_path = output_dir / f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(output_path, "w") as f:
+            json.dump(output, f, indent=2)
+        print(f"Saved results to {output_path}")
 
-        # Run evaluation with bandit tracking and visualization
-        capture_viz = not args.no_visualizations
-        result = eval_one_dataset(
-            test_dataloader,
-            net,
-            dataset_name,
-            track_bandit=True,
-            capture_visualizations=capture_viz,
-        )
 
-        # Handle different return formats
-        if isinstance(result, tuple) and len(result) == 3:
-            auc, bandit_info, visualization_data = result
-        elif isinstance(result, tuple) and len(result) == 2:
-            auc, bandit_info = result
-            visualization_data = []
-        else:
-            auc = result
-            bandit_info = None
-            visualization_data = []
-
-        print("Model: ", os.path.basename(modelpath))
-        print("AUC:", round(float(auc), 4))
-
-        # Save bandit analysis
-        if bandit_info:
-            analysis_path = f"logs/bandit_analysis_{dataset_name}.json"
-            from utils.simple_evaluate import analyze_bandit_patterns
-
-            analysis = analyze_bandit_patterns(bandit_info, dataset_name)
-
-            import json
-
-            os.makedirs("logs", exist_ok=True)
-            with open(analysis_path, "w") as f:
-                json.dump(analysis, f, indent=2)
-            print(f"Bandit analysis saved to {analysis_path}")
-
-            # Print most important patches
-            if analysis.get("most_important_patches"):
-                print(
-                    f'Most important patches for {dataset_name}: {analysis["most_important_patches"]}'
-                )
-            if analysis.get("most_selected_blocks"):
-                print(
-                    f'Most selected blocks for {dataset_name}: {analysis["most_selected_blocks"]}'
-                )
-
-        # Save visualization samples
-        # if visualization_data and not args.no_visualizations:
-        #     print(
-        #         f"Creating visualizations for {len(visualization_data)} samples from {dataset_name}"
-        #     )
-        #     saved_paths = save_forgery_samples(
-        #         visualization_data, max_samples_per_dataset=3
-        #     )
-        #     print(f"Visualizations saved: {len(saved_paths)} files")
-
-        # Create logs directory if it doesn't exist
-        os.makedirs("logs", exist_ok=True)
-        f = open("logs/evaluate.txt", "a")
-        f.write("\nModel: " + os.path.basename(modelpath))
-        f.write("\nTest path: " + test_path)
-        f.write("\nDataset: " + dataset_name)
-        f.write("\nAUC: " + str(round(float(auc), 4)))
-        f.write("\n")
-        f.close()
-
-    # Create summary visualization after all datasets are processed
-    if not args.no_visualizations:
-        print("\nCreating summary visualization...")
-        all_analyses = {}
-        for i, test_path in enumerate(config.test_label_path):
-            dataset_name = (
-                dataset_names[i] if i < len(dataset_names) else f"Dataset_{i+1}"
-            )
-            analysis_path = f"logs/bandit_analysis_{dataset_name}.json"
-
-            if os.path.exists(analysis_path):
-                with open(analysis_path, "r") as f:
-                    all_analyses[dataset_name] = json.load(f)
-
-        if all_analyses:
-            summary_path = create_summary_visualization_new(all_analyses)
-            print(f"Summary visualization saved to {summary_path}")
+if __name__ == "__main__":
+    main()

@@ -58,10 +58,23 @@ generative/test_results/
 generative/test_results_*/
 classifier/test_results/
 classifier/test_results_*/
+test_*debug/
+*_debug/
+classifier/test_*.py
+!classifier/test.py
+generative/test_reconstruction.py
+generative/test_recon_vae.py
+generative/visualize_mae_blocks.py
 
 # Images and visualization
 imgs/
 images/
+out_*/
+output_*/
+visualization_*/
+visualize_*.py
+test_reconstruction*.py
+test_single_reconstruction.py
 
 # WandB
 wandb/
