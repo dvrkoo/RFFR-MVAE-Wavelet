@@ -1,103 +1,244 @@
+# RFFR-MVAE-Wavelet
 
-# Real Face Foundation Representation Learning for Generalized Deepfake Detection
+Working repository for our PatchRec/RFFR deepfake detection code before transplanting it into:
 
-This repository is the official implementation of [Real Face Foundation Representation Learning for Generalized Deepfake Detection](https://arxiv.org/abs/2303.08439). 
+```text
+https://github.com/dvrkoo/PatchRecDeepFakeDetection
+```
 
-The paper is published at [*Pattern recognition*](https://www.sciencedirect.com/science/article/abs/pii/S0031320324010501) in Dec 2024.
+This repo is the local paper-code staging area. The current classifier supports:
 
-## Overview
+- MAE generator
+- MAE-VAE generator
+- 2-branch classifier: RGB + spatial residual
+- 3-branch classifier: RGB + spatial residual + wavelet residual
 
-In this study, we propose Real Face Foundation Representation Learning (RFFR), which aims to learn a general representation from large-scale real face datasets and detect potential artifacts outside the distribution of RFFR. 
+The classifier test entry point is:
 
-![Real Face Foundation Representation Learning for Generalized Deepfake Detection](imgs/main.png)
+```bash
+python classifier/test.py
+```
 
+## Layout
 
-## Preparations
+```text
+classifier/              Deepfake classifier
+classifier/configs/      Python and YAML classifier configs
+classifier/models/       Classifier and generator wrapper models
+classifier/utils/        Dataset, evaluation, and wavelet utilities
+generative/              MAE / MAE-VAE training code
+requirements.txt         Python dependencies
+```
 
-- To install requirements:
+## Environment
 
-```setup
+Install the Python requirements from the repo root:
+
+```bash
 pip install -r requirements.txt
 ```
 
-- Download datasets at [FaceForensics++](https://github.com/ondyari/FaceForensics), [ForgeryNet](https://yinanhe.github.io/projects/forgerynet.html), [Celeb-DF](https://github.com/yuezunli/celeb-deepfakeforensics), etc.
+The active local environment also needs:
 
-- Run face detection. With cropped face images, generate json files in the following format:
-
-```
-[
-    {
-        "path": "path/to/image_0.png",
-        "label": 0
-    },
-
-    {
-        "path": "path/to/image_1.png",
-        "label": 1
-    },
-
-    ...
-]
-
+```bash
+pip install timm scikit-learn
 ```
 
-- Link the json files in the config files to load the data. You can also just modify the dataset files to load the images in any other ways you want.
+`pytorch_wavelets` is optional for the current path because the code falls back to the PyWavelets implementation.
 
+## Local Paths
+
+Local label root on this machine:
+
+```text
+/home/nick/.local/share/Trash/files/data_label
+```
+
+The FF++ labels under that directory point to images under:
+
+```text
+/home/nick/FF++
+```
+
+The CelebDF labels under that directory point to images under:
+
+```text
+/home/nick/GitHub/tools/celebdf
+```
+
+Main MAE-VAE generator checkpoint used by the classifier config:
+
+```text
+/home/nick/GitHub/RFFR/rffr_generative/checkpoint/checkpoint/mae_vae/CDF/best_loss_0.03285_100.pth.tar
+```
+
+Main 3-branch MAE-VAE classifier checkpoint:
+
+```text
+/home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar
+```
+
+Other local classifier checkpoints from the previous RFFR repo:
+
+```text
+/home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/3branch_wavelet_residual_F2F_All_Fake1_2025-11-20-17:09:17_8a88dc/best_model/2025-11-20-17:09:17_8a88dc/1__AUC_0.72589_285.pth.tar
+/home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/3branch_wavelet_residual_F2F_All_2025-11-24-09:36:31_99f735/best_model/2025-11-24-09:36:31_99f735/1__AUC_0.79474_90.pth.tar
+/home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae/2branch_standard_F2F_All_Fake100_2025-11-25-15:55:37_560fa9/best_model/2025-11-25-15:55:37_560fa9/1__AUC_0.81892_90.pth.tar
+```
+
+## Test Commands
+
+Run a small FF++ Face2Face test:
+
+```bash
+python classifier/test.py \
+  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
+  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/f2f_test_label.json \
+  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
+  --dataset-name F2F \
+  --samples 140 \
+  --batch-size 16 \
+  --num-workers 4
+```
+
+Run FF++ Deepfakes:
+
+```bash
+python classifier/test.py \
+  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
+  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/df_test_label.json \
+  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
+  --dataset-name DF \
+  --samples 140 \
+  --batch-size 16 \
+  --num-workers 4
+```
+
+Run FF++ FaceSwap:
+
+```bash
+python classifier/test.py \
+  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
+  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/fsw_test_label.json \
+  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
+  --dataset-name FSW \
+  --samples 140 \
+  --batch-size 16 \
+  --num-workers 4
+```
+
+Run FF++ NeuralTextures:
+
+```bash
+python classifier/test.py \
+  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
+  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/nt_test_label.json \
+  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
+  --dataset-name NT \
+  --samples 140 \
+  --batch-size 16 \
+  --num-workers 4
+```
+
+Run DFD:
+
+```bash
+python classifier/test.py \
+  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
+  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/dfd_test_label.json \
+  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/dfd_real_test_label.json \
+  --dataset-name DFD \
+  --samples 700 \
+  --batch-size 16 \
+  --num-workers 4
+```
+
+Run CelebDF:
+
+```bash
+python classifier/test.py \
+  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
+  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/celebdf_fake_test_label.json \
+  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/celebdf_real_test_label.json \
+  --dataset-name CelebDF \
+  --samples 700 \
+  --batch-size 16 \
+  --num-workers 4
+```
+
+Save metrics JSON:
+
+```bash
+python classifier/test.py \
+  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
+  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/f2f_test_label.json \
+  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
+  --dataset-name F2F \
+  --samples 140 \
+  --batch-size 16 \
+  --num-workers 4 \
+  --save-json \
+  --output-dir classifier/test_results
+```
+
+## Configs
+
+Classifier YAML examples live in:
+
+```text
+classifier/configs/experiments/
+```
+
+The important switch is:
+
+```yaml
+model:
+  generative_model_type: "mae_vae"
+  architecture:
+    wavelet_residual_branch: true
+```
+
+Use `wavelet_residual_branch: false` for the 2-branch classifier.
+
+Use `generative_model_type: "mae"` or `generative_model_type: "mae_vae"` for the generator.
 
 ## Training
 
-Make sure to specify paths to labels, pretrained models, as well as hyperparameters in ```rffr_classifier/configs/config.py``` and ```rffr_generative/configs/config.py```.
+Train the generator:
 
-To train the generative model that produces residuals:
-
-```train
-cd rffr_generative
+```bash
+cd generative
 python train.py
 ```
 
-To train the classifier:
+Train the classifier:
 
-```train
-cd rffr_classifier
+```bash
+cd classifier
 python train.py
 ```
 
+Use YAML configs where possible:
 
-## Evaluation
-
-Specify models to test in the aforementioned config files.
-
-View demos of the generative model's output by running:
-
-```eval
-cd rffr_generative
-python evaluate.py
+```bash
+cd classifier
+python train.py --config configs/experiments/f2f_mae_vae_3branch_wavelet.yaml
 ```
 
-Test the deepfake detector by running:
+## Notes For Transplant
 
-```eval
-cd rffr_classifier
-python test.py
-```
+Keep the transplant focused on:
 
+- `classifier/test.py`
+- `classifier/train.py`
+- `classifier/models/model_detector.py`
+- `classifier/models/model_mae.py`
+- `classifier/models/model_mae_vae.py`
+- `classifier/utils/simple_evaluate.py`
+- `classifier/utils/dataset.py`
+- `classifier/utils/wavelet_utils.py`
+- `classifier/configs/`
+- `generative/models/model_mae.py`
+- `generative/models/model_mae_vae.py`
 
-## Acknowledgements
-
-This repository partially borrows from [SSDG](https://github.com/taylover-pei/SSDG-CVPR2020) (for code structure) and [MAE](https://github.com/facebookresearch/mae) (for implementation of the generative model). Thank you!
-
-## Reference
-Consider citing our paper if you find it helpful:
-
-```
-@article{shi2024real,
-  title={Real face foundation representation learning for generalized deepfake detection},
-  author={Shi, Liang and Zhang, Jie and Ji, Zhilong and Bai, Jinfeng and Shan, Shiguang},
-  journal={Pattern Recognition},
-  pages={111299},
-  year={2024},
-  publisher={Elsevier}
-}
-```
-
-Feel free to contact us with any comments or feedback.
+Do not transplant local artifacts, old duplicate tests, old reconstruction scripts, old result JSONs, or backup files.
