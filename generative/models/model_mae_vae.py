@@ -5,7 +5,7 @@ from configs.config import config
 
 
 class VariationalBottleneck(nn.Module):
-    """Simple VAE bottleneck with single linear layers (original architecture)"""
+    """VAE bottleneck used by the original MAE-VAE architecture."""
 
     def __init__(self, input_dim, latent_dim):
         super().__init__()
@@ -45,112 +45,6 @@ class VariationalBottleneck(nn.Module):
         return x_decoded, mu, logvar
 
 
-class SophisticatedVariationalBottleneck(nn.Module):
-    """Sophisticated VAE bottleneck with multi-layer MLP, residual connections, and LayerNorm"""
-
-    def __init__(self, input_dim, latent_dim):
-        super().__init__()
-        self.input_dim = input_dim
-        self.latent_dim = latent_dim
-
-        # Calculate intermediate dimension
-        intermediate_dim = (input_dim + latent_dim) // 2
-
-        # Encoder pathway with residual connections
-        self.encoder_fc1 = nn.Linear(input_dim, intermediate_dim)
-        self.encoder_ln1 = nn.LayerNorm(intermediate_dim)
-        self.encoder_fc2 = nn.Linear(intermediate_dim, intermediate_dim)
-        self.encoder_ln2 = nn.LayerNorm(intermediate_dim)
-        
-        self.fc_mu = nn.Linear(intermediate_dim, latent_dim)
-        self.fc_logvar = nn.Linear(intermediate_dim, latent_dim)
-
-        # Decoder pathway with residual connections
-        self.decoder_fc1 = nn.Linear(latent_dim, intermediate_dim)
-        self.decoder_ln1 = nn.LayerNorm(intermediate_dim)
-        self.decoder_fc2 = nn.Linear(intermediate_dim, intermediate_dim)
-        self.decoder_ln2 = nn.LayerNorm(intermediate_dim)
-        self.decoder_fc3 = nn.Linear(intermediate_dim, input_dim)
-
-        # Residual projection layers
-        self.encoder_residual_proj = nn.Linear(input_dim, intermediate_dim)
-        self.decoder_residual_proj = nn.Linear(latent_dim, intermediate_dim)
-
-        self.activation = nn.GELU()
-        self.dropout = nn.Dropout(0.1)
-
-        self._init_weights()
-
-    def _init_weights(self):
-        # Initialize all linear layers with xavier uniform
-        for module in self.modules():
-            if isinstance(module, nn.Linear):
-                nn.init.xavier_uniform_(module.weight)
-                if module.bias is not None:
-                    nn.init.zeros_(module.bias)
-
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-
-    def encode(self, x):
-        # First encoder block with residual
-        residual = self.encoder_residual_proj(x)
-        h = self.encoder_fc1(x)
-        h = self.encoder_ln1(h)
-        h = self.activation(h)
-        h = self.dropout(h)
-        h = h + residual  # Residual connection
-
-        # Second encoder block with residual
-        residual = h
-        h = self.encoder_fc2(h)
-        h = self.encoder_ln2(h)
-        h = self.activation(h)
-        h = self.dropout(h)
-        h = h + residual  # Residual connection
-
-        mu = self.fc_mu(h)
-        logvar = self.fc_logvar(h)
-        
-        return mu, logvar
-
-    def decode(self, z):
-        # First decoder block with residual
-        residual = self.decoder_residual_proj(z)
-        h = self.decoder_fc1(z)
-        h = self.decoder_ln1(h)
-        h = self.activation(h)
-        h = self.dropout(h)
-        h = h + residual  # Residual connection
-
-        # Second decoder block with residual
-        residual = h
-        h = self.decoder_fc2(h)
-        h = self.decoder_ln2(h)
-        h = self.activation(h)
-        h = self.dropout(h)
-        h = h + residual  # Residual connection
-
-        # Final projection
-        x_decoded = self.decoder_fc3(h)
-        
-        return x_decoded
-
-    def forward(self, x, deterministic=False):
-        mu, logvar = self.encode(x)
-
-        if deterministic:
-            z = mu
-        else:
-            z = self.reparameterize(mu, logvar)
-
-        x_decoded = self.decode(z)
-
-        return x_decoded, mu, logvar
-
-
 class HybridMAEVAE(MaskedAutoencoderViT):
 
     def __init__(
@@ -169,7 +63,6 @@ class HybridMAEVAE(MaskedAutoencoderViT):
         norm_pix_loss=False,
         vae_latent_dim=512,
         freeze_encoder=True,
-        vae_bottleneck_type="simple",
     ):
         super().__init__(
             img_size=img_size,
@@ -188,19 +81,9 @@ class HybridMAEVAE(MaskedAutoencoderViT):
 
         self.vae_latent_dim = vae_latent_dim
         self.freeze_encoder = freeze_encoder
-        self.vae_bottleneck_type = vae_bottleneck_type
-
-        # Select bottleneck architecture based on config
-        if vae_bottleneck_type == "sophisticated":
-            print(f"Using SOPHISTICATED VAE bottleneck (input_dim={embed_dim}, latent_dim={vae_latent_dim})")
-            self.vae_bottleneck = SophisticatedVariationalBottleneck(
-                input_dim=embed_dim, latent_dim=vae_latent_dim
-            )
-        else:
-            print(f"Using SIMPLE VAE bottleneck (input_dim={embed_dim}, latent_dim={vae_latent_dim})")
-            self.vae_bottleneck = VariationalBottleneck(
-                input_dim=embed_dim, latent_dim=vae_latent_dim
-            )
+        self.vae_bottleneck = VariationalBottleneck(
+            input_dim=embed_dim, latent_dim=vae_latent_dim
+        )
 
         if freeze_encoder:
             self.freeze_mae_encoder()
@@ -367,7 +250,7 @@ def mae_vae_vit_base_patch16(**kwargs):
 
 
 if __name__ == "__main__":
-    model = mae_vae_vit_base_patch16(vae_latent_dim=512, freeze_encoder=True, vae_bottleneck_type="sophisticated")
+    model = mae_vae_vit_base_patch16(vae_latent_dim=512, freeze_encoder=True)
     print(f"Total parameters: {sum(p.numel() for p in model.parameters())}")
     print(
         f"Trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}"

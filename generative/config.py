@@ -21,7 +21,7 @@ class DefaultConfigs(object):
     # ============================================================================
     # Generator type: "mae" or "mae_vae"
     generator_type = "mae"
-    model = "mae_vae"  # Kept for backward compatibility
+    model = generator_type  # Kept for backward compatibility
     
     # MAE (Masked Autoencoder) Configuration
     mae_encoder_embed_dim = 768
@@ -35,14 +35,9 @@ class DefaultConfigs(object):
     freeze_mae_encoder = False
     
     # VAE Configuration (only used when generator_type="mae_vae")
-    vae_bottleneck_type = "simple"  # "simple" or "sophisticated"
     vae_latent_dim = 768  # Dimensionality of VAE latent space
     vae_beta = 0.0001  # Beta parameter for KL divergence weighting
     vae_kl_warmup_steps = 5000  # Steps to warmup KL loss from 0 to vae_beta
-    
-    # Legacy VAE parameters (kept for backward compatibility, not actively used)
-    vae_architecture = "resnet"
-    vae_base_channels = 64
     
     # ============================================================================
     # TRAINING HYPERPARAMETERS

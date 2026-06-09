@@ -1,0 +1,29 @@
+# Face2Face Training with MAE
+# 2-branch architecture: RGB + spatial residuals
+
+metadata:
+  experiment_name: "f2f_mae_2branch"
+  comment: "Face2Face training with MAE, 2-branch"
+
+model:
+  generative_model_type: "mae"
+  mae_path: "/seidenas/users/nmarini/generative_checkpoint/mae/FFHQ_mae_STAGE1_best/best_loss_0.00928_275.pth.tar"
+
+  architecture:
+    wavelet_residual_branch: false
+    use_wavelets: false
+    classifier_uses_wavelets: false
+    wavelet_type: "haar"
+    wavelet_levels: 1
+
+dataset:
+  protocol: "F2F_All"
+
+training:
+  lr: 0.00002
+  batch_size: 4
+  max_iter: 15000
+
+logging:
+  wandb:
+    tags: ["f2f", "mae", "2branch"]

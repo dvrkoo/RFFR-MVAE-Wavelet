@@ -1,0 +1,158 @@
+# Base Configuration for RFFR Classifier Training
+# This file contains all default values for the classifier training
+
+metadata:
+  seed: 42
+  comment: "FFHQ Stage 2: MAE 2-branch, Train SG123, Test OOD"
+  experiment_name: "base_classifier"
+
+model:
+  # Model type
+  name: "rffr"
+
+  # Generative model configuration
+  generative_model_type: "mae_vae"  # Options: "mae", "mae_vae"
+
+  # VAE configuration (only used when generative_model_type includes "vae")
+  vae:
+    latent_dim: 256
+    base_channels: 64
+
+  # MAE model path (based on generative_model_type)
+  mae_path: "/home/nick/GitHub/RFFR/rffr_generative/checkpoint/checkpoint/mae_vae/CDF/best_loss_0.03285_100.pth.tar"
+
+  # Pretrained weights for backbone
+  pretrained_weights: "../pretrain/jx_vit_base_p16_224-80ecf9dd.pth"
+
+  # Block masking
+  use_iterative_block_masking: true
+
+  # Architecture options
+  architecture:
+    # Architecture mode
+    use_wavelets: true
+    # false: 2-branch RGB + spatial residuals
+    # true:  3-branch RGB + spatial residuals + 12-channel wavelet residuals
+    wavelet_residual_branch: true  # 3-branch: RGB + spatial residuals + wavelet residuals
+
+    # Wavelet configuration
+    wavelet_type: "haar"  # Options: "haar", "db4", "bior2.2", "coif2"
+    wavelet_levels: 1
+    wavelet_high_freq_weight: 1.0
+
+    # Generator/Classifier wavelet handling
+    generator_outputs_wavelets: false
+    classifier_uses_wavelets: true  # Classifier computes wavelets from RGB
+
+    # Pretraining options
+    use_imagenet_pretrain_for_wavelets: false  # Use random init for wavelet branches
+
+    # 3-branch wavelet residual branch uses 12-channel AdaptiveViT
+    use_adaptive_vit: true
+
+training:
+  # Learning rate and optimizer
+  lr: 0.00002  # 2e-5
+  use_adamw: false
+  weight_decay: 0.0001
+
+  # Batch size and gradient accumulation
+  batch_size: 4
+  use_gradient_accumulation: false
+  gradient_accumulation_steps: 4
+
+  # Training schedule
+  max_iter: 15000  # 600 epochs * 50 iters per epoch
+  iter_per_epoch: 50
+
+  # Learning rate scheduling
+  lr_scheduling:
+    use_warmup: false
+    warmup_steps: 2000
+    warmup_start_lr: 0.000001  # 1e-6
+
+    use_scheduler: false
+    scheduler_type: "cosine"  # Options: "cosine", "multistep", "exponential"
+
+    # Cosine annealing
+    cosine_min_lr: 1e-7
+    cosine_T_max: null  # Will be set to (max_iter - warmup_steps) if null
+
+    # MultiStep LR
+    multistep_milestones: [10000, 20000, 25000]
+    multistep_gamma: 0.5
+
+    # Exponential LR
+    exponential_gamma: 0.99995
+
+  # Loss configuration
+  loss:
+    # Anomaly detection mode
+    anomaly_detection_mode: false
+    center_loss_weight: 2.0
+    center_margin: 5.0
+    repulsion_weight: 15.0
+    anomaly_score_percentile: 95
+
+    # Hybrid multi-task loss
+    use_hybrid_loss: true
+    compactness_weight: 0.1
+    classification_weight: 1.0
+
+dataset:
+  # Dataset protocol
+  protocol: "F2F_All"
+
+  # Base directory for data labels
+  base_dir: "../data_label/"
+
+  # Data loading
+  num_workers: 4
+  pin_memory: true
+
+  # Video subset configuration
+  max_fake_frames: 100  # None = use all frames
+  use_video_subset: false
+  video_subset_count: null
+  video_subset_start_idx: 0
+
+  # Multi-forgery mixing
+  mixing:
+    use_mixed_forgeries: false
+    forgery_mix_types: ["f2f", "df"]
+    forgery_mix_ratios: [0.5, 0.5]
+    forgery_mix_base_dir: "ff_270_fake1"
+    total_fake_samples: 720
+
+logging:
+  # WandB logging
+  wandb:
+    enabled: true
+    project: "rffr-classifier"
+    entity: null  # Set to your wandb username if needed
+    run_name: null  # Auto-generated if null
+    tags: []
+    notes: ""
+
+  # Paths
+  logs_dir: "./logs/"
+
+paths:
+  # Checkpoint paths
+  checkpoint: "./checkpoint/${model.name}/current_model/"
+  best_model: "./checkpoint/${model.name}/best_model/"
+
+  # Code to save for reproducibility
+  save_code:
+    - "configs/config.py"
+    - "configs/base.yaml"
+    - "configs/config_loader.py"
+    - "train.py"
+    - "utils/simple_evaluate.py"
+    - "utils/dataset.py"
+    - "utils/wavelet_utils.py"
+    - "models/model_mae.py"
+    - "models/model_detector.py"
+
+gpu:
+  devices: "0"  # Comma-separated GPU IDs

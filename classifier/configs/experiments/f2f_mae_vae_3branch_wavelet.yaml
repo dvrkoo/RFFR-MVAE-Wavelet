@@ -1,0 +1,29 @@
+# Face2Face Training with MAE-VAE
+# 3-branch architecture: RGB + spatial residuals + wavelet residuals
+
+metadata:
+  experiment_name: "f2f_mae_vae_3branch"
+  comment: "Face2Face training with MAE-VAE, 3-branch with wavelets"
+
+model:
+  generative_model_type: "mae_vae"
+  mae_path: "/home/nick/GitHub/RFFR/rffr_generative/checkpoint/checkpoint/mae_vae/CDF/best_loss_0.03285_100.pth.tar"
+
+  architecture:
+    wavelet_residual_branch: true  # 3-branch mode
+    use_wavelets: true
+    classifier_uses_wavelets: true
+    wavelet_type: "haar"
+    wavelet_levels: 1
+
+dataset:
+  protocol: "F2F_All"
+
+training:
+  lr: 0.00002
+  batch_size: 4
+  max_iter: 15000
+
+logging:
+  wandb:
+    tags: ["f2f", "mae_vae", "3branch", "wavelets"]

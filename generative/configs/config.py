@@ -34,7 +34,6 @@ class DefaultConfigs(object):
     freeze_mae_encoder = False
 
     # VAE Configuration (only used when generator_type="mae_vae")
-    vae_bottleneck_type = "simple"  # "simple" or "sophisticated"
     vae_latent_dim = 768  # Dimensionality of VAE latent space
     vae_beta = 0.0001  # Beta parameter for KL divergence weighting
     vae_kl_warmup_steps = 5000  # Steps to warmup KL loss from 0 to vae_beta
@@ -117,7 +116,6 @@ class DefaultConfigs(object):
     use_dataset_cache = False  # Toggle to enable/disable image precaching to RAM
     dataset_cache_file = None  # Path to cache file (None = no disk caching, RAM only)
     dataset_cache_workers = 32  # Number of threads for parallel image loading
-
     # ============================================================================
     # DATA PATHS (Auto-configured based on dataset_name)
     # ============================================================================

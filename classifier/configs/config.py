@@ -3,9 +3,9 @@ from .label_path import get_label_path
 
 class DefaultConfigs(object):
 
-    generative_model_type = "mae"  # Options: "mae", "mae_vae", "vae"
-    vae_latent_dim = 256  # The latent dimension you found works bestwavelet
-    vae_base_channels = 64  # Base channels for VAE encoder/decoder
+    generative_model_type = "mae_vae"  # Options: "mae", "mae_vae"
+    vae_latent_dim = 256
+    vae_base_channels = 64  # Kept for checkpoint/config metadata compatibility
 
     use_iterative_block_masking = True
 
@@ -21,8 +21,8 @@ class DefaultConfigs(object):
     pin_memory = True  # Pin memory for DataLoader
     # Models
     lr = 2e-5
-    batch_size = 6
-    gpus = "1"
+    batch_size = 4
+    gpus = "0"
     model = "rffr"
     if generative_model_type == "mae":
         # mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae/FF_FN_best/best_loss_0.0032_200.pth.tar"
@@ -31,10 +31,9 @@ class DefaultConfigs(object):
         mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae/FFHQ_mae_STAGE1_best/best_loss_0.00928_275.pth.tar"  # actually performs better
         # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/mae/CDF/best_loss_0.00113_100.pth.tar"
     elif generative_model_type == "mae_vae":
-        mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae_vae/FFHQ_mae_vae_STAGE1_best/best_loss_0.01325_800.pth.tar"
+        # mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae_vae/FFHQ_mae_vae_STAGE1_best/best_loss_0.01325_800.pth.tar"
+        mae_path = "/home/nick/GitHub/RFFR/rffr_generative/checkpoint/checkpoint/mae_vae/CDF/best_loss_0.03285_100.pth.tar"
 
-    # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/vae/CDF/best_loss_0.01532_50.pth.tar"
-    # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/wavelet_vae/CDF/best_loss_0.02849_50.pth.tar"
     pretrained_weights = "../pretrain/jx_vit_base_p16_224-80ecf9dd.pth"
     # Training Options
     use_gradient_accumulation = (
@@ -49,7 +48,7 @@ class DefaultConfigs(object):
     # - Slower training but lower memory usage
 
     # Data
-    protocol = "FFHQ_SG2"
+    protocol = "F2F_All"
     dataset_base = "../data_label/"
     (
         real_label_path,
@@ -127,34 +126,20 @@ class DefaultConfigs(object):
     compactness_weight = 0.1  # Weight for compactness loss
     classification_weight = 1.0  # Weight for cross-entropy loss
 
-    use_wavelets = True  # Disabled for dual-branch wavelet mode
-    wavelet_type = "db4"  # Wavelet type (db4, haar, bior2.2, coif2)
+    use_wavelets = True
+    wavelet_type = "haar"  # Wavelet type (db4, haar, bior2.2, coif2)
     wavelet_levels = (
         1  # Number of decomposition levels (optimal for deepfake detection)
     )
     wavelet_high_freq_weight = 1.0  # Weight multiplier for high-frequency components
 
-    generator_outputs_wavelets = False  # Whether the generator model outputs wavelets (requires special training)
-    classifier_uses_wavelets = (
-        True  # Whether the classifier computes wavelets from RGB in real-time
-    )
+    generator_outputs_wavelets = False
+    classifier_uses_wavelets = True
 
     # Architecture Options
-    separate_wavelet_branch = False  # Disabled for dual-branch wavelet mode
-    four_branch_wavelet = False  # Disabled for dual-branch wavelet mode
-    # When four_branch_wavelet=True:
-    #   - Branch 1: RGB (768 features)
-    #   - Branch 2-5: LL, LH, HL, HH wavelet subbands (768 features each)
-    #   - Final classifier input: 1536 dimensions (RGB + fused wavelets)
-    # When separate_wavelet_branch=True (3-branch):
-    #   - Branch 1: RGB (768 features)
-    #   - Branch 2: Spatial residuals (768 features)
-    #   - Branch 3: Fused wavelet coefficients (768 features)
-    #   - Final classifier input: 2304 dimensions
-    # When both False (2-branch):
-    #   - Branch 1: RGB (768 features)
-    #   - Branch 2: Spatial residuals (768 features)
-    #   - Final classifier input: 1536 dimensions
+    # False: 2-branch architecture (RGB + spatial residuals)
+    # True:  3-branch architecture (RGB + spatial residuals + wavelet residuals)
+    wavelet_residual_branch = True
 
     # Pretraining Options for Wavelet Branches
     use_imagenet_pretrain_for_wavelets = (
@@ -164,42 +149,13 @@ class DefaultConfigs(object):
     # When False: Only RGB branch uses ImageNet pretraining, wavelet branches use random initialization
     # ImageNet features (edges, textures, objects) don't transfer well to deepfake frequency artifacts
 
-    use_adaptive_vit = (
-        True  # Use AdaptiveViT with dynamic patch embedding for variable input sizes
-    )
-    # When True: Wavelet branches use AdaptiveViT that adapts patch size based on input dimensions
-    # When False: Use standard CNN-based WaveletSubbandClassifier (lower performance but more memory efficient)
-    # AdaptiveViT maintains ~196 patches regardless of input size for consistent processing
+    use_adaptive_vit = True  # The 3-branch wavelet residual branch is 12-channel AdaptiveViT
 
-    wavelet_only_mode = False  # Disabled for dual-branch wavelet mode
-    # When True: Single-branch architecture processing ONLY 12-channel wavelet residuals
-    #   - No RGB branch
-    #   - No spatial residual branch
-    #   - Direct wavelet residuals from generator (no RGB→wavelet conversion)
-    #   - Final classifier input: 768 dimensions (single wavelet branch)
-    # When False: Use multi-branch architectures (2-branch, 3-branch, or 5-branch based on other flags)
-    # IMPORTANT: Requires generator checkpoint trained with use_wavelet_reconstruction=True
-
-    wavelet_dual_branch_mode = False  # ENABLED: Use 2-branch wavelet architecture (original wavelets + wavelet residuals)
-    # When True: Dual-branch architecture mirroring original RGB 2-branch logic
-    #   - Branch 1: Original image → wavelets (ground truth frequency)
-    #   - Branch 2: Generator wavelet residuals (reconstruction error in frequency)
-    #   - Both branches in frequency domain (no RGB spatial features)
-    #   - Final classifier input: 1536 dimensions (768×2)
-    # When False: Use other architectures based on wavelet_only_mode and other flags
-    # IMPORTANT: Requires generator_outputs_wavelets=True (generator trained to output wavelets)
-    # NOTE: Takes precedence over wavelet_only_mode if both are True
-
-    wavelet_residual_branch = (
-        True  # Disabled: 2-branch mode (RGB + spatial residuals only)
-    )
-    # When True: 3-branch architecture combining spatial and frequency domains
-    #   - Branch 1: RGB input (768 features)
-    #   - Branch 2: Spatial residuals from generator (768 features)
-    #   - Branch 3: Wavelet residuals computed in real-time (768 features)
-    #   - Final classifier input: 2304 dimensions (768×3)
-    # IMPORTANT: Works with ANY generator checkpoint (computes wavelets externally in real-time)
-    # NOTE: Takes precedence over separate_wavelet_branch if both are True
+    # Deprecated architecture flags kept false for older scripts/config snapshots.
+    separate_wavelet_branch = False
+    four_branch_wavelet = False
+    wavelet_only_mode = False
+    wavelet_dual_branch_mode = False
 
     # paths information
     checkpoint_path = "./checkpoint/" + model + "/current_model/"
@@ -208,8 +164,9 @@ class DefaultConfigs(object):
 
     def set_run_paths(self, run_identifier):
         """Update checkpoint paths to be run-specific"""
-        self.checkpoint_path = f"/seidenas/users/nmarini/classifier_checkpoint/FF_FN{self.generative_model_type}/{run_identifier}/current_model/"
-        self.best_model_path = f"/seidenas/users/nmarini/classifier_checkpoint/checkpoint/FF_FN{self.generative_model_type}/{run_identifier}/best_model/"
+
+        self.checkpoint_path = f"/home/nick/GitHub/RFFR-MVAE-Wavelet/classifier/checkopint/{self.generative_model_type}/{run_identifier}/current_model/"
+        self.best_model_path = f"/home/nick/GitHub/RFFR-MVAE-Wavelet/classifier/checkopint/{self.generative_model_type}/{run_identifier}/best_model/"
 
     # Code Saver
     save_code = [

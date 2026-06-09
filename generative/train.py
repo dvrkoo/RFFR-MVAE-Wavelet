@@ -205,10 +205,9 @@ def train(config):
         net = mae_vae_vit_base_patch16(
             vae_latent_dim=config.model.vae.latent_dim,
             freeze_encoder=config.model.mae.freeze_encoder,
-            vae_bottleneck_type=config.model.vae.bottleneck_type,
         ).cuda()
         print(
-            f"Initialized MAE-VAE with latent_dim={config.model.vae.latent_dim}, bottleneck={config.model.vae.bottleneck_type}"
+            f"Initialized MAE-VAE with latent_dim={config.model.vae.latent_dim}"
         )
     elif config.model.generator_type == "mae":
         net = mae_vit_base_patch16().cuda()
@@ -291,7 +290,6 @@ def train(config):
                 "vae_latent_dim": config.model.vae.latent_dim,
                 "vae_beta": config.model.vae.beta,
                 "vae_kl_warmup_steps": config.model.vae.kl_warmup_steps,
-                "vae_bottleneck_type": config.model.vae.bottleneck_type,
                 "freeze_mae_encoder": config.model.mae.freeze_encoder,
             })
         
@@ -468,7 +466,10 @@ def train(config):
 
             for test_data in test_dataloader:
                 test_data = test_data.cuda()
-                rec_loss, _, _ = net(test_data)
+                if config.model.generator_type == "mae_vae":
+                    rec_loss, _, _, _, _ = net(test_data, beta=config.model.vae.beta)
+                else:
+                    rec_loss, _, _ = net(test_data)
                 rec_loss = rec_loss.mean().cpu().detach().numpy()
                 eval_loss_logger.update(rec_loss)
 
@@ -479,7 +480,6 @@ def train(config):
             # Only save VAE-specific config if using MAE-VAE
             if config.model.generator_type == "mae_vae":
                 model_config["vae_latent_dim"] = config.model.vae.latent_dim
-                model_config["vae_bottleneck_type"] = config.model.vae.bottleneck_type
 
             # Save numbered checkpoint every 25 epochs
             if (epoch + 1) % 25 == 0:

@@ -1,4 +1,6 @@
 import os
+import sys
+import argparse
 import random
 import hashlib
 import numpy as np
@@ -7,7 +9,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from configs.config import config
 from datetime import datetime
 import time
 import wandb
@@ -18,9 +19,58 @@ from utils.simple_evaluate import eval_multiple_dataset
 from utils.get_loader import get_dataset
 from utils.center_loss import CompactnessLoss
 
-from models.model_detector import RFFRL
+import models.model_mae as model_mae
+import models.model_mae_vae as model_mae_vae
+import models.model_detector as model_detector
+import utils.wavelet_utils as wavelet_utils
 
 
+def load_configuration(args):
+    """
+    Load configuration from either Python config.py or YAML file.
+
+    Supports backward compatibility with Python config while enabling YAML configs.
+
+    Args:
+        args: Command line arguments
+
+    Returns:
+        Configuration object
+    """
+    if args.config:
+        # Load YAML configuration
+        from configs.config_loader import load_config
+
+        print(f"Loading YAML config: {args.config}")
+        config = load_config(
+            config_path=args.config,
+            cli_args=sys.argv[1:],
+            flat_compat=True  # Use flat config for backward compatibility
+        )
+        print("YAML config loaded successfully")
+    else:
+        # Load Python configuration (backward compatibility)
+        from configs.config import config
+
+        print("Using Python config (configs/config.py)")
+
+    return config
+
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='RFFR Classifier Training')
+parser.add_argument('--config', type=str, default=None,
+                    help='Path to YAML config file (e.g., experiments/f2f_mae_vae_3branch_wavelet.yaml)')
+args, unknown = parser.parse_known_args()
+
+# Load configuration (Python or YAML)
+config = load_configuration(args)
+model_mae.config = config
+model_mae_vae.config = config
+model_detector.config = config
+wavelet_utils.config = config
+
+# Set random seeds
 random.seed(config.seed)
 np.random.seed(config.seed)
 torch.manual_seed(config.seed)
@@ -70,14 +120,6 @@ def train():
     # Determine architecture string for run naming
     if config.wavelet_residual_branch:
         arch_name = "3branch_wavelet_residual"
-    elif config.wavelet_dual_branch_mode:
-        arch_name = "2branch_wavelet_dual"
-    elif config.wavelet_only_mode:
-        arch_name = "1branch_wavelet_only"
-    elif config.four_branch_wavelet:
-        arch_name = "5branch_wavelet"
-    elif config.separate_wavelet_branch:
-        arch_name = "3branch_wavelet"
     else:
         arch_name = "2branch_standard"
 
@@ -176,10 +218,6 @@ def train():
                 "classifier_uses_wavelets": config.classifier_uses_wavelets,
                 # Architecture flags
                 "wavelet_residual_branch": config.wavelet_residual_branch,
-                "separate_wavelet_branch": config.separate_wavelet_branch,
-                "four_branch_wavelet": config.four_branch_wavelet,
-                "wavelet_only_mode": config.wavelet_only_mode,
-                "wavelet_dual_branch_mode": config.wavelet_dual_branch_mode,
                 # Wavelet pretraining
                 "use_imagenet_pretrain_for_wavelets": config.use_imagenet_pretrain_for_wavelets,
                 "use_adaptive_vit": config.use_adaptive_vit,
@@ -206,20 +244,12 @@ def train():
         )
 
     # Model
-    net = RFFRL()
+    net = model_detector.RFFRL()
     net = net.cuda()
 
     if config.anomaly_detection_mode:
         if config.wavelet_residual_branch:
             feature_dim = 768 * 3
-        elif config.four_branch_wavelet:
-            feature_dim = 768 * 2
-        elif config.separate_wavelet_branch:
-            feature_dim = 768 * 3
-        elif config.wavelet_dual_branch_mode:
-            feature_dim = 768 * 2
-        elif config.wavelet_only_mode:
-            feature_dim = 768
         else:
             feature_dim = 768 * 2
 
