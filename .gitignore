@@ -62,6 +62,7 @@ test_*debug/
 *_debug/
 classifier/test_*.py
 !classifier/test.py
+classifier/verify_*.py
 generative/test_reconstruction.py
 generative/test_recon_vae.py
 generative/visualize_mae_blocks.py

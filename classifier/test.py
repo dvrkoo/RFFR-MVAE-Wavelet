@@ -110,6 +110,8 @@ def select_checkpoint(args):
 
     checkpoints = find_checkpoints(args.checkpoint_dir)
     if args.list_checkpoints:
+        if not checkpoints:
+            print(f"No checkpoints found under {args.checkpoint_dir}")
         for path in checkpoints:
             print(path)
         raise SystemExit(0)
@@ -231,10 +233,14 @@ def evaluate_dataset(name, fake_items, real_items, model, args):
 
 def main():
     args = parse_args()
+
+    if args.list_checkpoints:
+        select_checkpoint(args)
+
+    checkpoint_path = select_checkpoint(args)
     cfg = load_configuration(args.config)
     set_reproducibility(cfg, args)
 
-    checkpoint_path = select_checkpoint(args)
     print(f"Using checkpoint: {checkpoint_path}")
     model, checkpoint = load_model(checkpoint_path)
 
