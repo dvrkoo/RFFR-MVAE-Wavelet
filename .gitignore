@@ -111,10 +111,16 @@ history/
 
 # Local launch/test scripts
 *.sh
+classifier/EXAMPLES_*.py
+classifier/configs/a-config.py
+classifier/configs/experiments/mixed_*.yaml
+classifier_refactored/
+compare_outputs.py
+create_forgerynet_index.py
 
 # Markdown files (summaries, notes, docs) - EXCEPT README
 *.md
-!README.md
+!/README.md
 
 # OpenCode artifacts
 .opencode/

@@ -283,15 +283,14 @@ def get_label_path(protocol):
             # "Faceforensics/excludes_hq/fs_val_label.json",
         ]
         test_label_path = [
-            "Faceforensics/excludes_hq_fake100/df_test_label.json",
-            "Faceforensics/excludes_hq_fake100/f2f_test_label.json",
-            "Faceforensics/excludes_hq_fake100/fsw_test_label.json",
-            "Faceforensics/excludes_hq_fake100/nt_test_label.json",
-            "Faceforensics/excludes_hq_fake100/fs_test_label.json",
+            "Faceforensics/excludes_hq/df_test_label.json",
+            "Faceforensics/excludes_hq/f2f_test_label.json",
+            "Faceforensics/excludes_hq/fsw_test_label.json",
+            "Faceforensics/excludes_hq/nt_test_label.json",
+            "Faceforensics/excludes_hq/fs_test_label.json",
         ]
         real_test_label_path = [
-            "Faceforensics/excludes_hq_fake100/real_test_label.json"
-            # "Faceforensics/excludes_hq/real_test_label.json"
+            "Faceforensics/excludes_hq/real_test_label.json"
         ]
 
         metrics = {

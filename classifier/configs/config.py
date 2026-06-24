@@ -1,9 +1,11 @@
+import os
+
 from .label_path import get_label_path
 
 
 class DefaultConfigs(object):
 
-    generative_model_type = "mae_vae"  # Options: "mae", "mae_vae"
+    generative_model_type = "mae_vae"
     vae_latent_dim = 256
     vae_base_channels = 64  # Kept for checkpoint/config metadata compatibility
 
@@ -11,7 +13,7 @@ class DefaultConfigs(object):
 
     # Setting
     seed = 42
-    comment = "FFHQ Stage 2: MAE 2-branch, Train SG123, Test OOD"
+    comment = "MAE-VAE 3-branch wavelet residual baseline"
     # Logging
     use_wandb = True
     wandb_project = "rffr-classifier"
@@ -24,15 +26,7 @@ class DefaultConfigs(object):
     batch_size = 4
     gpus = "0"
     model = "rffr"
-    if generative_model_type == "mae":
-        # mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae/FF_FN_best/best_loss_0.0032_200.pth.tar"
-        # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/mae/best/best_loss_0.00103_100.pth.tar"
-        # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/mae/best/FF_FN_best_loss_0.00355_100.pth.tar"
-        mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae/FFHQ_mae_STAGE1_best/best_loss_0.00928_275.pth.tar"  # actually performs better
-        # mae_path = "/andromeda/personal/nmarini/RFFR/rffr_generative/checkpoint/mae/CDF/best_loss_0.00113_100.pth.tar"
-    elif generative_model_type == "mae_vae":
-        # mae_path = "/seidenas/users/nmarini/generative_checkpoint/mae_vae/FFHQ_mae_vae_STAGE1_best/best_loss_0.01325_800.pth.tar"
-        mae_path = "/home/nick/GitHub/RFFR/rffr_generative/checkpoint/checkpoint/mae_vae/CDF/best_loss_0.03285_100.pth.tar"
+    mae_path = os.environ.get("RFFR_MAE_VAE_CKPT", "")
 
     pretrained_weights = "../pretrain/jx_vit_base_p16_224-80ecf9dd.pth"
     # Training Options
@@ -48,8 +42,8 @@ class DefaultConfigs(object):
     # - Slower training but lower memory usage
 
     # Data
-    protocol = "F2F_All"
-    dataset_base = "../data_label/"
+    protocol = "F2F_All_Fake100"
+    dataset_base = os.environ.get("RFFR_DATA_LABEL_DIR", "../data_label/")
     (
         real_label_path,
         fake_label_path,
@@ -165,8 +159,9 @@ class DefaultConfigs(object):
     def set_run_paths(self, run_identifier):
         """Update checkpoint paths to be run-specific"""
 
-        self.checkpoint_path = f"/home/nick/GitHub/RFFR-MVAE-Wavelet/classifier/checkopint/{self.generative_model_type}/{run_identifier}/current_model/"
-        self.best_model_path = f"/home/nick/GitHub/RFFR-MVAE-Wavelet/classifier/checkopint/{self.generative_model_type}/{run_identifier}/best_model/"
+        root = os.environ.get("RFFR_CLASSIFIER_CHECKPOINT_DIR", "./checkpoint")
+        self.checkpoint_path = f"{root}/{self.generative_model_type}/{run_identifier}/current_model/"
+        self.best_model_path = f"{root}/{self.generative_model_type}/{run_identifier}/best_model/"
 
     # Code Saver
     save_code = [

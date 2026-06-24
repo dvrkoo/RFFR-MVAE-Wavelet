@@ -1,244 +1,167 @@
 # RFFR-MVAE-Wavelet
 
-Working repository for our PatchRec/RFFR deepfake detection code before transplanting it into:
+Paper-code staging repo for the MAE-VAE wavelet residual classifier before transplant to:
 
 ```text
 https://github.com/dvrkoo/PatchRecDeepFakeDetection
 ```
 
-This repo is the local paper-code staging area. The current classifier supports:
+Scope is intentionally narrow:
 
-- MAE generator
-- MAE-VAE generator
-- 2-branch classifier: RGB + spatial residual
-- 3-branch classifier: RGB + spatial residual + wavelet residual
+- MAE-VAE generator only
+- 3-branch classifier only: RGB + spatial residual + wavelet residual
+- Face2Face fake-frame baselines: 1, 3, 5, 7, 100 fake frames per fake video
 
-The classifier test entry point is:
-
-```bash
-python classifier/test.py
-```
-
-## Layout
-
-```text
-classifier/              Deepfake classifier
-classifier/configs/      Python and YAML classifier configs
-classifier/models/       Classifier and generator wrapper models
-classifier/utils/        Dataset, evaluation, and wavelet utilities
-generative/              MAE / MAE-VAE training code
-requirements.txt         Python dependencies
-```
-
-## Environment
-
-Install the Python requirements from the repo root:
+## Setup
 
 ```bash
 pip install -r requirements.txt
-```
-
-The active local environment also needs:
-
-```bash
 pip install timm scikit-learn
 ```
 
-`pytorch_wavelets` is optional for the current path because the code falls back to the PyWavelets implementation.
+Set paths before training or testing:
 
-## Local Paths
+```bash
+export RFFR_DATA_LABEL_DIR=/path/to/data_label
+export RFFR_MAE_VAE_CKPT=/path/to/mae_vae_checkpoint.pth.tar
+```
 
-Local label root on this machine:
+## data_label Contract
+
+`RFFR_DATA_LABEL_DIR` points to the directory containing `ff_270/`, `ff_270_fake*/`, and `Faceforensics/`.
+
+Each label file is a JSON list:
+
+```json
+[
+  {"path": "/absolute/path/to/real_frame.png", "label": 0},
+  {"path": "/absolute/path/to/fake_frame.png", "label": 1}
+]
+```
+
+Rules:
+
+- `path` must point to a readable cropped face image.
+- `label` is `0` for real, `1` for fake.
+- Absolute paths are preferred.
+- Images are frames/crops, not raw videos.
+
+Expected layout:
 
 ```text
-/home/nick/.local/share/Trash/files/data_label
+data_label/
+  ff_270/
+    train/
+      real_train_label.json
+
+  ff_270_fake1/train/f2f_train_label.json
+  ff_270_fake3/train/f2f_train_label.json
+  ff_270_fake5/train/f2f_train_label.json
+  ff_270_fake7/train/f2f_train_label.json
+  ff_270_fake100/train/f2f_train_label.json
+
+  Faceforensics/
+    excludes_hq/
+      real_val_label.json
+      real_test_label.json
+      df_val_label.json
+      df_test_label.json
+      f2f_val_label.json
+      f2f_test_label.json
+      fsw_val_label.json
+      fsw_test_label.json
+      nt_val_label.json
+      nt_test_label.json
+      fs_test_label.json
+      dfd_test_label.json
+      dfd_real_test_label.json
+      celebdf_fake_test_label.json
+      celebdf_real_test_label.json
 ```
 
-The FF++ labels under that directory point to images under:
+`ff_270_fakeN` means fake training labels use `N` frames per fake video. Real training labels stay in `ff_270/train/real_train_label.json`.
 
-```text
-/home/nick/FF++
-```
-
-The CelebDF labels under that directory point to images under:
-
-```text
-/home/nick/GitHub/tools/celebdf
-```
-
-Main MAE-VAE generator checkpoint used by the classifier config:
-
-```text
-/home/nick/GitHub/RFFR/rffr_generative/checkpoint/checkpoint/mae_vae/CDF/best_loss_0.03285_100.pth.tar
-```
-
-Main 3-branch MAE-VAE classifier checkpoint:
-
-```text
-/home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar
-```
-
-Other local classifier checkpoints from the previous RFFR repo:
-
-```text
-/home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/3branch_wavelet_residual_F2F_All_Fake1_2025-11-20-17:09:17_8a88dc/best_model/2025-11-20-17:09:17_8a88dc/1__AUC_0.72589_285.pth.tar
-/home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/3branch_wavelet_residual_F2F_All_2025-11-24-09:36:31_99f735/best_model/2025-11-24-09:36:31_99f735/1__AUC_0.79474_90.pth.tar
-/home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae/2branch_standard_F2F_All_Fake100_2025-11-25-15:55:37_560fa9/best_model/2025-11-25-15:55:37_560fa9/1__AUC_0.81892_90.pth.tar
-```
-
-## Test Commands
-
-Run a small FF++ Face2Face test:
+Generate FF++ labels from cropped frame folders:
 
 ```bash
-python classifier/test.py \
-  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
-  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/f2f_test_label.json \
-  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
-  --dataset-name F2F \
-  --samples 140 \
-  --batch-size 16 \
-  --num-workers 4
+python tools/create_ffpp_labels.py \
+  --ffpp-root /path/to/FF++ \
+  --out "$RFFR_DATA_LABEL_DIR" \
+  --fake-frames 1,3,5,7,100
 ```
 
-Run FF++ Deepfakes:
+Check labels before running:
 
 ```bash
-python classifier/test.py \
-  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
-  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/df_test_label.json \
-  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
-  --dataset-name DF \
-  --samples 140 \
-  --batch-size 16 \
-  --num-workers 4
+python - <<'PY'
+import json, os
+from pathlib import Path
+root = Path(os.environ["RFFR_DATA_LABEL_DIR"])
+for rel in [
+    "Faceforensics/excludes_hq/real_test_label.json",
+    "Faceforensics/excludes_hq/f2f_test_label.json",
+    "ff_270_fake5/train/f2f_train_label.json",
+]:
+    data = json.loads((root / rel).read_text())
+    missing = [x["path"] for x in data[:20] if not Path(x["path"]).exists()]
+    print(rel, "ok" if not missing else f"missing {len(missing)}/20")
+PY
 ```
 
-Run FF++ FaceSwap:
-
-```bash
-python classifier/test.py \
-  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
-  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/fsw_test_label.json \
-  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
-  --dataset-name FSW \
-  --samples 140 \
-  --batch-size 16 \
-  --num-workers 4
-```
-
-Run FF++ NeuralTextures:
-
-```bash
-python classifier/test.py \
-  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
-  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/nt_test_label.json \
-  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
-  --dataset-name NT \
-  --samples 140 \
-  --batch-size 16 \
-  --num-workers 4
-```
-
-Run DFD:
-
-```bash
-python classifier/test.py \
-  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
-  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/dfd_test_label.json \
-  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/dfd_real_test_label.json \
-  --dataset-name DFD \
-  --samples 700 \
-  --batch-size 16 \
-  --num-workers 4
-```
-
-Run CelebDF:
-
-```bash
-python classifier/test.py \
-  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
-  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/celebdf_fake_test_label.json \
-  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/celebdf_real_test_label.json \
-  --dataset-name CelebDF \
-  --samples 700 \
-  --batch-size 16 \
-  --num-workers 4
-```
-
-Save metrics JSON:
-
-```bash
-python classifier/test.py \
-  --checkpoint /home/nick/GitHub/RFFR/rffr_classifier/checkpoint/checkpoint/FF_FN_mae_vae_wave/best_model/2025-11-26-13:56:57_d59139/1__AUC_0.80015_255.pth.tar \
-  --fake-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/f2f_test_label.json \
-  --real-label /home/nick/.local/share/Trash/files/data_label/Faceforensics/excludes_hq/real_test_label.json \
-  --dataset-name F2F \
-  --samples 140 \
-  --batch-size 16 \
-  --num-workers 4 \
-  --save-json \
-  --output-dir classifier/test_results
-```
-
-## Configs
-
-Classifier YAML examples live in:
-
-```text
-classifier/configs/experiments/
-```
-
-The important switch is:
-
-```yaml
-model:
-  generative_model_type: "mae_vae"
-  architecture:
-    wavelet_residual_branch: true
-```
-
-Use `wavelet_residual_branch: false` for the 2-branch classifier.
-
-Use `generative_model_type: "mae"` or `generative_model_type: "mae_vae"` for the generator.
-
-## Training
-
-Train the generator:
-
-```bash
-cd generative
-python train.py
-```
-
-Train the classifier:
+## Training Baselines
 
 ```bash
 cd classifier
-python train.py
+python train.py --config configs/experiments/f2f_mae_vae_3branch_fake1.yaml
+python train.py --config configs/experiments/f2f_mae_vae_3branch_fake3.yaml
+python train.py --config configs/experiments/f2f_mae_vae_3branch_fake5.yaml
+python train.py --config configs/experiments/f2f_mae_vae_3branch_fake7.yaml
+python train.py --config configs/experiments/f2f_mae_vae_3branch_fake100.yaml
 ```
 
-Use YAML configs where possible:
+## Testing
+
+Use `classifier/test.py` with a trained classifier checkpoint.
+
+Set the classifier checkpoint path:
 
 ```bash
-cd classifier
-python train.py --config configs/experiments/f2f_mae_vae_3branch_wavelet.yaml
+export RFFR_CLASSIFIER_CKPT=/path/to/classifier_checkpoint.pth.tar
 ```
 
-## Notes For Transplant
+Face2Face:
 
-Keep the transplant focused on:
+```bash
+python classifier/test.py \
+  --config experiments/f2f_mae_vae_3branch_fake100.yaml \
+  --checkpoint "$RFFR_CLASSIFIER_CKPT" \
+  --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/f2f_test_label.json" \
+  --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/real_test_label.json" \
+  --dataset-name F2F \
+  --samples 140 \
+  --batch-size 16
+```
 
-- `classifier/test.py`
-- `classifier/train.py`
-- `classifier/models/model_detector.py`
-- `classifier/models/model_mae.py`
-- `classifier/models/model_mae_vae.py`
-- `classifier/utils/simple_evaluate.py`
-- `classifier/utils/dataset.py`
-- `classifier/utils/wavelet_utils.py`
-- `classifier/configs/`
-- `generative/models/model_mae.py`
+Deepfakes, FaceSwap, NeuralTextures:
+
+```bash
+python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/df_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/real_test_label.json" --dataset-name DF --samples 140 --batch-size 16
+python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/fsw_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/real_test_label.json" --dataset-name FSW --samples 140 --batch-size 16
+python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/nt_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/real_test_label.json" --dataset-name NT --samples 140 --batch-size 16
+```
+
+DFD and CelebDF:
+
+```bash
+python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/dfd_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/dfd_real_test_label.json" --dataset-name DFD --samples 700 --batch-size 16
+python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/celebdf_fake_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/celebdf_real_test_label.json" --dataset-name CelebDF --samples 700 --batch-size 16
+```
+
+## Files To Transplant
+
+- `classifier/`
 - `generative/models/model_mae_vae.py`
+- `requirements.txt`
+- `README.md`
 
-Do not transplant local artifacts, old duplicate tests, old reconstruction scripts, old result JSONs, or backup files.
+Do not transplant local artifacts, old duplicate tests, reconstruction scripts, result JSONs, or backup files.

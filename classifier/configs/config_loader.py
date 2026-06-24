@@ -113,6 +113,8 @@ def resolve_paths(config: ConfigDict, config_dir: Path) -> ConfigDict:
         Config with resolved paths
     """
     def resolve_value(value, base_dir):
+        if isinstance(value, str):
+            value = os.path.expandvars(value)
         if isinstance(value, str) and value.startswith('./'):
             # Relative path - resolve relative to config directory
             return str((base_dir / value).resolve())

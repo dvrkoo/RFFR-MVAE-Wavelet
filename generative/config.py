@@ -1,3 +1,6 @@
+import os
+
+
 class DefaultConfigs(object):
     """
     Comprehensive configuration for RFFR-MVAE Generator
@@ -129,8 +132,8 @@ class DefaultConfigs(object):
     my_pretrained = None  # Path to resume from custom checkpoint
     in_pretrained = None  # Path to pretrained ImageNet weights
     
-    checkpoint_path = "/seidenas/users/nmarini/generative_checkpoint/mae_vae/FFHQ_mae_vae_STAGE1_current/"
-    best_model_path = "/seidenas/users/nmarini/generative_checkpoint/mae_vae/FFHQ_mae_vae_STAGE1_best/"
+    checkpoint_path = os.environ.get("RFFR_GENERATIVE_CHECKPOINT_DIR", "./checkpoints/mae_vae_ff270")
+    best_model_path = os.environ.get("RFFR_GENERATIVE_BEST_DIR", "./checkpoints/mae_vae_ff270_best")
     
     # ============================================================================
     # LOGGING CONFIGURATION

@@ -1,0 +1,12 @@
+# MAE-VAE 3-branch wavelet residual classifier, 5 fake frames per video.
+metadata:
+  experiment_name: "f2f_mae_vae_3branch_fake5"
+  comment: "F2F MAE-VAE 3-branch, fake5"
+
+dataset:
+  protocol: "F2F_All_Fake5"
+  max_fake_frames: 5
+
+logging:
+  wandb:
+    tags: ["f2f", "mae_vae", "3branch", "wavelet", "fake5"]

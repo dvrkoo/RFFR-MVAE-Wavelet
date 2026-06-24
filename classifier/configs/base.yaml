@@ -3,23 +3,21 @@
 
 metadata:
   seed: 42
-  comment: "FFHQ Stage 2: MAE 2-branch, Train SG123, Test OOD"
-  experiment_name: "base_classifier"
+  comment: "MAE-VAE 3-branch wavelet residual baseline"
+  experiment_name: "mae_vae_3branch_base"
 
 model:
   # Model type
   name: "rffr"
 
-  # Generative model configuration
-  generative_model_type: "mae_vae"  # Options: "mae", "mae_vae"
+  generative_model_type: "mae_vae"
 
   # VAE configuration (only used when generative_model_type includes "vae")
   vae:
     latent_dim: 256
     base_channels: 64
 
-  # MAE model path (based on generative_model_type)
-  mae_path: "/home/nick/GitHub/RFFR/rffr_generative/checkpoint/checkpoint/mae_vae/CDF/best_loss_0.03285_100.pth.tar"
+  mae_path: "${RFFR_MAE_VAE_CKPT}"
 
   # Pretrained weights for backbone
   pretrained_weights: "../pretrain/jx_vit_base_p16_224-80ecf9dd.pth"
@@ -31,9 +29,7 @@ model:
   architecture:
     # Architecture mode
     use_wavelets: true
-    # false: 2-branch RGB + spatial residuals
-    # true:  3-branch RGB + spatial residuals + 12-channel wavelet residuals
-    wavelet_residual_branch: true  # 3-branch: RGB + spatial residuals + wavelet residuals
+    wavelet_residual_branch: true
 
     # Wavelet configuration
     wavelet_type: "haar"  # Options: "haar", "db4", "bior2.2", "coif2"
@@ -42,7 +38,7 @@ model:
 
     # Generator/Classifier wavelet handling
     generator_outputs_wavelets: false
-    classifier_uses_wavelets: true  # Classifier computes wavelets from RGB
+    classifier_uses_wavelets: true
 
     # Pretraining options
     use_imagenet_pretrain_for_wavelets: false  # Use random init for wavelet branches
@@ -100,11 +96,9 @@ training:
     classification_weight: 1.0
 
 dataset:
-  # Dataset protocol
-  protocol: "F2F_All"
+  protocol: "F2F_All_Fake100"
 
-  # Base directory for data labels
-  base_dir: "../data_label/"
+  base_dir: "${RFFR_DATA_LABEL_DIR}"
 
   # Data loading
   num_workers: 4
