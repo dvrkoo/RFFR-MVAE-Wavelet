@@ -65,6 +65,7 @@ classifier/test_*.py
 classifier/verify_*.py
 generative/test_reconstruction.py
 generative/test_recon_vae.py
+generative/evaluate.py
 generative/visualize_mae_blocks.py
 
 # Images and visualization
