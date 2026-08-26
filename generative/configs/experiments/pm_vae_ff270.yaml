@@ -1,0 +1,18 @@
+# PM-VAE training on FaceForensics++ (270 videos)
+
+metadata:
+  experiment_name: "pm_vae_ff270"
+  comment: "PM-VAE training on FF++ real images (270 videos)"
+
+model:
+  generator_type: "mae_vae"
+
+dataset:
+  name: "ff270"
+  split: "train"
+  type: "real"
+
+logging:
+  wandb:
+    tags: ["pm_vae", "ff270", "real"]
+    notes: "PM-VAE baseline on FaceForensics++ real images"

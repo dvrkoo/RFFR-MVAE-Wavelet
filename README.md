@@ -1,6 +1,6 @@
-# RFFR-MVAE-Wavelet
+# PM-VAE Wavelet
 
-Paper-code staging repo for the MAE-VAE wavelet residual classifier before transplant to:
+Paper-code staging repo for PM-VAE wavelet residual classifier before transplant to:
 
 ```text
 https://github.com/dvrkoo/PatchRecDeepFakeDetection
@@ -8,7 +8,7 @@ https://github.com/dvrkoo/PatchRecDeepFakeDetection
 
 Scope is intentionally narrow:
 
-- MAE-VAE generator only
+- PM-VAE generator only
 - 3-branch classifier only: RGB + spatial residual + wavelet residual
 - Face2Face fake-frame baselines: 1, 3, 5, 7, 100 fake frames per fake video
 
@@ -23,7 +23,7 @@ Set paths before training or testing:
 
 ```bash
 export RFFR_DATA_LABEL_DIR=/path/to/data_label
-export RFFR_MAE_VAE_CKPT=/path/to/mae_vae_checkpoint.pth.tar
+export PM_VAE_CKPT=/path/to/pm_vae_checkpoint.pth.tar
 ```
 
 ## data_label Contract
@@ -110,13 +110,22 @@ PY
 
 ## Training Baselines
 
+Train PM-VAE on FF++ real frames:
+
+```bash
+cd generative
+python train.py --config configs/experiments/pm_vae_ff270.yaml
+```
+
+Train classifier fake-frame baselines:
+
 ```bash
 cd classifier
-python train.py --config configs/experiments/f2f_mae_vae_3branch_fake1.yaml
-python train.py --config configs/experiments/f2f_mae_vae_3branch_fake3.yaml
-python train.py --config configs/experiments/f2f_mae_vae_3branch_fake5.yaml
-python train.py --config configs/experiments/f2f_mae_vae_3branch_fake7.yaml
-python train.py --config configs/experiments/f2f_mae_vae_3branch_fake100.yaml
+python train.py --config configs/experiments/f2f_pm_vae_3branch_fake1.yaml
+python train.py --config configs/experiments/f2f_pm_vae_3branch_fake3.yaml
+python train.py --config configs/experiments/f2f_pm_vae_3branch_fake5.yaml
+python train.py --config configs/experiments/f2f_pm_vae_3branch_fake7.yaml
+python train.py --config configs/experiments/f2f_pm_vae_3branch_fake100.yaml
 ```
 
 ## Testing
@@ -133,28 +142,13 @@ Face2Face:
 
 ```bash
 python classifier/test.py \
-  --config experiments/f2f_mae_vae_3branch_fake100.yaml \
+  --config experiments/f2f_pm_vae_3branch_fake100.yaml \
   --checkpoint "$RFFR_CLASSIFIER_CKPT" \
   --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/f2f_test_label.json" \
   --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/real_test_label.json" \
   --dataset-name F2F \
   --samples 140 \
   --batch-size 16
-```
-
-Deepfakes, FaceSwap, NeuralTextures:
-
-```bash
-python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/df_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/real_test_label.json" --dataset-name DF --samples 140 --batch-size 16
-python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/fsw_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/real_test_label.json" --dataset-name FSW --samples 140 --batch-size 16
-python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/nt_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/real_test_label.json" --dataset-name NT --samples 140 --batch-size 16
-```
-
-DFD and CelebDF:
-
-```bash
-python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/dfd_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/dfd_real_test_label.json" --dataset-name DFD --samples 700 --batch-size 16
-python classifier/test.py --config experiments/f2f_mae_vae_3branch_fake100.yaml --checkpoint "$RFFR_CLASSIFIER_CKPT" --fake-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/celebdf_fake_test_label.json" --real-label "$RFFR_DATA_LABEL_DIR/Faceforensics/excludes_hq/celebdf_real_test_label.json" --dataset-name CelebDF --samples 700 --batch-size 16
 ```
 
 ## Files To Transplant

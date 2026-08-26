@@ -60,7 +60,7 @@ def load_configuration(args):
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='RFFR Classifier Training')
 parser.add_argument('--config', type=str, default=None,
-                    help='Path to YAML config file (e.g., experiments/f2f_mae_vae_3branch_wavelet.yaml)')
+                    help='Path to YAML config file (e.g., experiments/f2f_pm_vae_3branch_fake1.yaml)')
 args, unknown = parser.parse_known_args()
 
 # Load configuration (Python or YAML)

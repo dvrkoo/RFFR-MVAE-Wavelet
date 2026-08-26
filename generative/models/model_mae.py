@@ -228,10 +228,10 @@ class MaskedAutoencoderViT(nn.Module):
                 remove_row = torch.randint(10, [N, 1]) + 1
                 remove_col = torch.randint(10, [N, 1]) + 1
             else:
-                remove_row = torch.LongTensor([3 * (block_id // 4) + 1] * N).unsqueeze(
-                    1
-                )
-                remove_col = torch.LongTensor([3 * (block_id % 4) + 1] * N).unsqueeze(1)
+                remove_row = torch.LongTensor(
+                    3 * torch.div(block_id, 4, rounding_mode="floor") + 1
+                ).unsqueeze(-1)
+                remove_col = torch.LongTensor(3 * (block_id % 4) + 1).unsqueeze(-1)
 
             block_remove = (remove_row * 14 + remove_col).expand(N, 9) + self.magic
             block_remove = block_remove.long()

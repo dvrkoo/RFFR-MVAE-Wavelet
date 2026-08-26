@@ -13,7 +13,7 @@ class DefaultConfigs(object):
 
     # Setting
     seed = 42
-    comment = "MAE-VAE 3-branch wavelet residual baseline"
+    comment = "PM-VAE 3-branch wavelet residual baseline"
     # Logging
     use_wandb = True
     wandb_project = "rffr-classifier"
@@ -26,7 +26,7 @@ class DefaultConfigs(object):
     batch_size = 4
     gpus = "0"
     model = "rffr"
-    mae_path = os.environ.get("RFFR_MAE_VAE_CKPT", "")
+    mae_path = os.environ.get("PM_VAE_CKPT", "")
 
     pretrained_weights = "../pretrain/jx_vit_base_p16_224-80ecf9dd.pth"
     # Training Options

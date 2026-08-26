@@ -1,14 +1,13 @@
-# Base Configuration for RFFR-MVAE Generative Training
+# Base Configuration for PM-VAE Generative Training
 # This file contains all default values for the generative model training
 
 metadata:
   seed: 912
-  comment: "RFFR-MVAE Generative Training"
-  experiment_name: "base_experiment"
+  comment: "PM-VAE generative training"
+  experiment_name: "pm_vae_base"
 
 model:
-  # Generator type: "mae" or "mae_vae"
-  generator_type: "mae"
+  generator_type: "mae_vae"
   
   # MAE (Masked Autoencoder) Configuration
   mae:
@@ -85,8 +84,8 @@ dataset:
 
 paths:
   # Data paths
-  data_label_base: "../data_label"
-  forgerynet_index: "../data_label/FN/train/forgerynet_video_index.json"
+  data_label_base: "${RFFR_DATA_LABEL_DIR}"
+  forgerynet_index: "${RFFR_DATA_LABEL_DIR}/FN/train/forgerynet_video_index.json"
   
   # Model paths
   checkpoint: "./checkpoints/${model.generator_type}_${dataset.name}"
@@ -116,7 +115,7 @@ logging:
   # WandB logging
   wandb:
     enabled: true
-    project: "RFFR-MVAE"
+    project: "PM-VAE"
     entity: null  # Set to your wandb username/team
     run_name: null  # Auto-generated if null
     tags: []  # e.g., ["mae_vae", "ffhq", "stage1"]

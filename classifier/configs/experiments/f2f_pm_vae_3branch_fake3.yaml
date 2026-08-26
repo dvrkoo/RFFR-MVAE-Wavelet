@@ -1,0 +1,12 @@
+# PM-VAE 3-branch wavelet residual classifier, 3 fake frames per video.
+metadata:
+  experiment_name: "f2f_pm_vae_3branch_fake3"
+  comment: "F2F PM-VAE 3-branch, fake3"
+
+dataset:
+  protocol: "F2F_All_Fake3"
+  max_fake_frames: 3
+
+logging:
+  wandb:
+    tags: ["f2f", "pm_vae", "3branch", "wavelet", "fake3"]

@@ -51,7 +51,7 @@ def write(path, rows):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Create FF++ labels for MAE-VAE 3-branch baselines")
+    parser = argparse.ArgumentParser(description="Create FF++ labels for PM-VAE 3-branch baselines")
     parser.add_argument("--ffpp-root", required=True, help="FF++ root with original_sequences/ and manipulated_sequences/")
     parser.add_argument("--out", required=True, help="Output data_label directory")
     parser.add_argument("--fake-frames", default="1,3,5,7,100")

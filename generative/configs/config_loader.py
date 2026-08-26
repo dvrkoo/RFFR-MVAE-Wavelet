@@ -113,6 +113,8 @@ def resolve_paths(config: ConfigDict, config_dir: Path) -> ConfigDict:
         Config with resolved paths
     """
     def resolve_value(value, base_dir):
+        if isinstance(value, str):
+            value = os.path.expandvars(value)
         if isinstance(value, str) and value.startswith('./'):
             # Relative path - resolve relative to config directory
             return str((base_dir / value).resolve())
@@ -374,8 +376,8 @@ def load_config(config_path: Optional[str] = None,
         
         # Handle different path formats:
         # 1. Absolute path: /full/path/to/config.yaml
-        # 2. Relative to config dir: experiments/mae_ff270.yaml
-        # 3. Relative to working dir with configs/ prefix: configs/experiments/mae_ff270.yaml
+        # 2. Relative to config dir: experiments/pm_vae_ff270.yaml
+        # 3. Relative to working dir with configs/ prefix: configs/experiments/pm_vae_ff270.yaml
         if not exp_path.is_absolute():
             # If path starts with 'configs/', remove it since we're already in configs/
             config_path_str = str(config_path)

@@ -1,9 +1,12 @@
+import os
+
+
 class DefaultConfigs(object):
     """
-    Comprehensive configuration for RFFR-MVAE Generator
+    Comprehensive configuration for PM-VAE Generator
 
     This configuration manages all aspects of the generative model training including:
-    - Model architecture (MAE, MAE-VAE)
+    - PM-VAE model architecture
     - Training hyperparameters
     - Dataset configuration
     - Checkpoint and logging paths
@@ -13,14 +16,13 @@ class DefaultConfigs(object):
     # EXPERIMENT METADATA
     # ============================================================================
     seed = 912
-    comment = "RFFR-MVAE: Generative modeling on FFHQ real images (MAE-VAE Stage 1)"
-    experiment_name = "FFHQ_mae_vae_STAGE1"
+    comment = "PM-VAE generative modeling on FF++ real images"
+    experiment_name = "pm_vae_ff270"
 
     # ============================================================================
     # MODEL ARCHITECTURE
     # ============================================================================
-    # Generator type: "mae" or "mae_vae"
-    generator_type = "mae"
+    generator_type = "mae_vae"
 
     # MAE (Masked Autoencoder) Configuration
     mae_encoder_embed_dim = 768
@@ -33,7 +35,7 @@ class DefaultConfigs(object):
     mae_mask_ratio = 0.75
     freeze_mae_encoder = False
 
-    # VAE Configuration (only used when generator_type="mae_vae")
+    # PM-VAE configuration
     vae_latent_dim = 768  # Dimensionality of VAE latent space
     vae_beta = 0.0001  # Beta parameter for KL divergence weighting
     vae_kl_warmup_steps = 5000  # Steps to warmup KL loss from 0 to vae_beta
@@ -141,7 +143,7 @@ class DefaultConfigs(object):
 
     # WandB Configuration
     enable_wandb = True  # Enable Weights & Biases logging
-    wandb_project = "RFFR-MVAE"  # WandB project name
+    wandb_project = "PM-VAE"
     wandb_entity = None  # WandB team/username (None = default user)
     wandb_run_name = None  # Custom run name (None = auto-generated)
     wandb_tags = []  # Tags for organizing runs (e.g., ["mae_vae", "stage1"])
@@ -219,8 +221,8 @@ def get_dataset_path(dataset_name=None, dataset_split=None, dataset_type=None):
 
     dataset_dir = dataset_dir_map[dataset_name]
 
-    # Construct path: ../data_label/{dataset_dir}/{split}/{type}_{split}_label.json
-    path = f"../data_label/{dataset_dir}/{dataset_split}/{dataset_type}_{dataset_split}_label.json"
+    data_root = os.environ.get("RFFR_DATA_LABEL_DIR", "../data_label")
+    path = f"{data_root}/{dataset_dir}/{dataset_split}/{dataset_type}_{dataset_split}_label.json"
 
     return path
 

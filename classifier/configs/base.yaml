@@ -3,8 +3,8 @@
 
 metadata:
   seed: 42
-  comment: "MAE-VAE 3-branch wavelet residual baseline"
-  experiment_name: "mae_vae_3branch_base"
+  comment: "PM-VAE 3-branch wavelet residual baseline"
+  experiment_name: "pm_vae_3branch_base"
 
 model:
   # Model type
@@ -17,7 +17,7 @@ model:
     latent_dim: 256
     base_channels: 64
 
-  mae_path: "${RFFR_MAE_VAE_CKPT}"
+  mae_path: "${PM_VAE_CKPT}"
 
   # Pretrained weights for backbone
   pretrained_weights: "../pretrain/jx_vit_base_p16_224-80ecf9dd.pth"
